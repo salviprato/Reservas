@@ -211,14 +211,16 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
         import { getFirestore, collection, addDoc, onSnapshot, doc, setDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
+        // --- AQUÍ ESTÁ LA NUEVA CONFIGURACIÓN VINCULADA ---
         const firebaseConfig = {
-          apiKey: "AIzaSyCPyCUDdQNj1HnMYSq5tXVw6wBQCawkae0",
-          authDomain: "barbershop-3d8cf.firebaseapp.com",
-          projectId: "barbershop-3d8cf",
-          storageBucket: "barbershop-3d8cf.firebasestorage.app",
-          messagingSenderId: "49978835076",
-          appId: "1:49978835076:web:cb64cbd5344589d89f02d1"
+          apiKey: "AIzaSyAXRXx4WvjBvBWUXV-0LgOB1gOWmrVD7s4",
+          authDomain: "reservas-5ec9d.firebaseapp.com",
+          projectId: "reservas-5ec9d",
+          storageBucket: "reservas-5ec9d.firebasestorage.app",
+          messagingSenderId: "687599648901",
+          appId: "1:687599648901:web:4254769ea30997745c29ec"
         };
+        // --------------------------------------------------
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
