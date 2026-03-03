@@ -45,7 +45,6 @@
         .dia-item.activo .dia-nombre { color: #e5e7eb; }
         .dia-numero { font-size: 1.4em; font-weight: bold; margin-top: 4px; }
         
-        /* Estilo para días cerrados */
         .dia-cerrado { opacity: 0.3; cursor: not-allowed; }
         .dia-cerrado:hover { background-color: #242c36; }
 
@@ -80,6 +79,7 @@
         }
         .tarjeta-reserva-grilla:hover { filter: brightness(1.1); }
         .tarjeta-reserva-grilla.asistio { background-color: #3b82f6; color: #ffffff; border-left: 5px solid #1d4ed8; }
+        .tarjeta-reserva-grilla.fijo { background-color: #8b5cf6; border-left: 5px solid #6d28d9; color: white;}
         
         .celda-vacia-hover { transition: background-color 0.1s; }
         .celda-vacia-hover:hover { background-color: rgba(59, 130, 246, 0.15); }
@@ -104,6 +104,7 @@
         .btn-whatsapp { background-color: #25D366; color: #171d24; } .btn-whatsapp:hover { background-color: #1DA851; }
         .btn-guardar { background-color: #10b981; } .btn-guardar:hover { background-color: #059669; }
         .btn-asistencia { background-color: #3b82f6; } .btn-asistencia:hover { background-color: #2563eb; }
+        .btn-fijo { background-color: #f59e0b; color: #171d24; } .btn-fijo:hover { background-color: #d97706; }
         .btn-eliminar { background-color: #ef4444; } .btn-eliminar:hover { background-color: #dc2626; }
         .btn-cerrar { background-color: #4b5563; margin-top: 10px;}
 
@@ -142,25 +143,21 @@
 
     <div id="modal-reserva-cliente" class="modal-overlay">
         <div class="modal-content">
-            <h3 style="margin: 0; margin-bottom: 5px;">Crear Turno Fijo</h3>
-            <p style="margin: 0; color: #9ca3af; margin-bottom: 15px;">Inicia: <strong id="reserva-fecha-display" style="color:white;"></strong> | Hora: <strong id="reserva-hora-display" style="color:white;"></strong></p>
+            <h3 style="margin: 0; margin-bottom: 5px;">Agendar Partido</h3>
+            <p style="margin: 0; color: #9ca3af; margin-bottom: 15px;">Fecha: <strong id="reserva-fecha-display" style="color:white;"></strong> | Hora: <strong id="reserva-hora-display" style="color:white;"></strong></p>
             
             <div style="text-align: left; display: flex; flex-direction: column; gap: 12px;">
                 <div>
                     <label style="font-size: 0.9em; color: #d1d5db; font-weight: bold;">Modalidad del Partido:</label>
                     <select id="select-modalidad" class="input-form" style="margin-top: 5px;" onchange="window.actualizarOpcionesCanchas()">
-                        <option value="F7">Fútbol 7 (Ocupa 1 cancha)</option>
+                        <option value="F7">Fútbol 7</option>
                         <option value="F9">Fútbol 9</option>
                         <option value="F11">Fútbol 11</option>
                     </select>
                 </div>
                 <div>
-                    <label style="font-size: 0.9em; color: #d1d5db; font-weight: bold;">Elige tu Cancha Base:</label>
+                    <label style="font-size: 0.9em; color: #d1d5db; font-weight: bold;">Elige tu Cancha:</label>
                     <select id="select-cancha-modal" class="input-form" style="margin-top: 5px;"></select>
-                </div>
-                <div>
-                    <label style="font-size: 0.9em; color: #d1d5db; font-weight: bold;">Semanas a repetir (Turno Fijo):</label>
-                    <input type="number" id="input-semanas-fijo" class="input-form" value="4" min="1" max="52" style="margin-top: 5px;">
                 </div>
                 <div>
                     <label style="font-size: 0.9em; color: #d1d5db; font-weight: bold;">Nombre del Equipo / Jugador:</label>
@@ -172,7 +169,7 @@
                 </div>
             </div>
 
-            <button id="btn-guardar-reserva" class="btn-modal btn-guardar" style="margin-top: 20px;" onclick="window.confirmarReservaCliente()">Confirmar Turno Fijo</button>
+            <button id="btn-guardar-reserva" class="btn-modal btn-guardar" style="margin-top: 20px;" onclick="window.confirmarReservaCliente()">Confirmar Turno</button>
             <button class="btn-modal btn-cerrar" style="margin-top: 0;" onclick="window.cerrarModalReservaCliente()">Cancelar</button>
         </div>
     </div>
@@ -185,10 +182,6 @@
                     <div style="flex: 1;"><label style="font-size: 0.9em; color: #d1d5db;">Primer Turno:</label><input type="time" id="input-primer-turno" class="input-form" style="margin-top: 4px;"></div>
                     <div style="flex: 1;"><label style="font-size: 0.9em; color: #d1d5db;">Último Turno:</label><input type="time" id="input-ultimo-turno" class="input-form" style="margin-top: 4px;"></div>
                 </div>
-                <div style="display: flex; gap: 10px; justify-content: space-between;">
-                    <div style="flex: 1;"><label style="font-size: 0.9em; color: #d1d5db;">Precio Base ($):</label><input type="number" id="input-precio" step="500" class="input-form" style="margin-top: 4px;"></div>
-                    <div style="flex: 1;"><label style="font-size: 0.9em; color: #d1d5db;">Canchas (F7):</label><input type="number" id="input-canchas" min="1" max="20" class="input-form" style="margin-top: 4px;" title="Total de canchas base"></div>
-                </div>
                 <div>
                     <label style="font-size: 0.9em; color: #d1d5db;">Duración Standard:</label>
                     <select id="input-duracion" class="input-form" style="margin-top: 4px;">
@@ -197,13 +190,16 @@
                         <option value="120">120 Minutos (2h)</option>
                     </select>
                 </div>
+                
                 <div style="border-top: 1px solid #44505d; padding-top: 10px;">
-                    <label style="font-size: 0.9em; color: #d1d5db; font-weight: bold;">Equivalencias Modulares (Canchas F7):</label>
+                    <label style="font-size: 0.9em; color: #d1d5db; font-weight: bold;">Cantidad de Canchas por Tipo:</label>
                     <div style="display: flex; gap: 10px; justify-content: space-between; margin-top: 8px;">
-                        <div style="flex: 1;"><label style="font-size: 0.85em; color: #9ca3af;">Para un F9:</label><input type="number" id="input-equiv-f9" min="1" max="5" class="input-form" style="margin-top: 4px;"></div>
-                        <div style="flex: 1;"><label style="font-size: 0.85em; color: #9ca3af;">Para un F11:</label><input type="number" id="input-equiv-f11" min="1" max="5" class="input-form" style="margin-top: 4px;"></div>
+                        <div style="flex: 1;"><label style="font-size: 0.85em; color: #9ca3af;">Fútbol 7:</label><input type="number" id="input-canchas-f7" min="0" max="15" class="input-form" style="margin-top: 4px;"></div>
+                        <div style="flex: 1;"><label style="font-size: 0.85em; color: #9ca3af;">Fútbol 9:</label><input type="number" id="input-canchas-f9" min="0" max="10" class="input-form" style="margin-top: 4px;"></div>
+                        <div style="flex: 1;"><label style="font-size: 0.85em; color: #9ca3af;">Fútbol 11:</label><input type="number" id="input-canchas-f11" min="0" max="10" class="input-form" style="margin-top: 4px;"></div>
                     </div>
                 </div>
+
                 <div style="border-top: 1px solid #44505d; padding-top: 10px;">
                     <label style="font-size: 0.9em; color: #d1d5db; font-weight: bold;">Días Abiertos:</label>
                     <div style="display: flex; gap: 8px; justify-content: space-between; margin-top: 8px; font-size: 0.85em; color: #9ca3af;">
@@ -235,6 +231,7 @@
             <h3 style="margin: 0; margin-bottom: 10px;">Gestionar Partido</h3>
             <div style="display: flex; flex-direction: column; gap: 10px;">
                 <button class="btn-modal btn-asistencia" onclick="window.accionAsistencia()">✔️ Confirmar Llegada</button>
+                <button class="btn-modal btn-fijo" onclick="window.hacerTurnoFijo()">🔄 Hacer Turno Fijo</button>
                 <button class="btn-modal btn-whatsapp" onclick="window.enviarWhatsApp()">💬 Enviar WhatsApp</button>
                 <button class="btn-modal btn-eliminar" onclick="window.accionEliminar()">🗑️ Cancelar este Partido</button>
                 <button class="btn-modal btn-cerrar" onclick="window.cerrarModalAcciones()">Cerrar</button>
@@ -272,12 +269,14 @@
 
         let primerTurno = "18:00"; 
         let ultimoTurno = "23:00";   
-        let precioGlobal = "15000"; 
-        let cantidadCanchasGlobal = 3; 
         let duracionGlobal = 60; 
-        let equivF9Global = 2; 
-        let equivF11Global = 3; 
-        let diasAbiertosGlobal = [1, 2, 3, 4, 5, 6, 0]; // 0=Dom, 1=Lun... Por defecto abre todos
+        
+        // Cantidades separadas por modalidad
+        let cantF7 = 6;
+        let cantF9 = 0;
+        let cantF11 = 1;
+
+        let diasAbiertosGlobal = [1, 2, 3, 4, 5, 6, 0]; 
         let reservasGlobales = [];
         let reservaSeleccionadaId = null; 
         let reservaEnProcesoHora = null;
@@ -386,7 +385,7 @@
             if (!reservaEnProcesoHora) return;
             
             const modalidad = document.getElementById('select-modalidad').value;
-            const numCanchasNecesarias = modalidad === 'F11' ? equivF11Global : (modalidad === 'F9' ? equivF9Global : 1);
+            let limiteCanchas = modalidad === 'F11' ? cantF11 : (modalidad === 'F9' ? cantF9 : cantF7);
             
             const numBloquesNuevo = duracionGlobal / 30;
             let bloquesNuevos = [];
@@ -395,16 +394,15 @@
             let canchasOcupadas = new Set();
             
             reservasGlobales.forEach(r => {
-                if ((r.fecha || fechasValidas[0]) === fechaSeleccionada) {
+                // Solo miramos colisiones del MISMO tipo de cancha (F7 choca con F7, F11 con F11)
+                if ((r.fecha || fechasValidas[0]) === fechaSeleccionada && r.modalidad === modalidad) {
                     let resDuracion = r.duracion || 60;
                     let numBloquesRes = resDuracion / 30;
                     let bloquesRes = [];
                     for(let b=0; b < numBloquesRes; b++) { bloquesRes.push(window.sumarMinutos(r.hora, b * 30)); }
                     
                     if(bloquesNuevos.some(b => bloquesRes.includes(b))) {
-                        let baseCancha = parseInt(r.cancha || "1");
-                        let cNecesarias = r.modalidad === 'F11' ? equivF11Global : (r.modalidad === 'F9' ? equivF9Global : 1);
-                        for(let i=0; i<cNecesarias; i++) canchasOcupadas.add(baseCancha + i);
+                        canchasOcupadas.add(parseInt(r.cancha || "1"));
                     }
                 }
             });
@@ -413,22 +411,16 @@
             selectCancha.innerHTML = '';
             let opcionesValidas = 0;
 
-            for(let c = 1; c <= cantidadCanchasGlobal; c++) {
-                let espacioSuficiente = true;
-                for(let i=0; i<numCanchasNecesarias; i++) {
-                    if ((c + i) > cantidadCanchasGlobal || canchasOcupadas.has(c + i)) {
-                        espacioSuficiente = false; break;
-                    }
-                }
-                if(espacioSuficiente) { 
-                    selectCancha.innerHTML += `<option value="${c}" style="color: black;">Cancha ${c}</option>`; 
+            for(let c = 1; c <= limiteCanchas; c++) {
+                if(!canchasOcupadas.has(c)) { 
+                    selectCancha.innerHTML += `<option value="${c}" style="color: black;">Cancha ${c} (${modalidad})</option>`; 
                     opcionesValidas++;
                 }
             }
 
             const btnGuardar = document.getElementById('btn-guardar-reserva');
             if (opcionesValidas === 0) {
-                selectCancha.innerHTML = `<option value="">Sin espacio para ${modalidad}</option>`;
+                selectCancha.innerHTML = `<option value="">Sin canchas ${modalidad} libres</option>`;
                 btnGuardar.disabled = true; btnGuardar.style.opacity = '0.5';
             } else {
                 btnGuardar.disabled = false; btnGuardar.style.opacity = '1';
@@ -446,23 +438,33 @@
             document.getElementById('reserva-fecha-display').innerText = `${f.getDate()}/${f.getMonth() + 1}/${f.getFullYear()}`;
             document.getElementById('reserva-hora-display').innerText = `${hora} hs (${duracionGlobal/60}h)`;
 
-            document.getElementById('select-modalidad').value = 'F7'; 
+            // Auto-seleccionar la primera modalidad que tenga canchas configuradas
+            let primeraModalidad = cantF7 > 0 ? 'F7' : (cantF9 > 0 ? 'F9' : 'F11');
+            document.getElementById('select-modalidad').value = primeraModalidad; 
+            
+            // Ocultar opciones de modalidades que no tienen canchas configuradas en el club
+            const selectMod = document.getElementById('select-modalidad');
+            Array.from(selectMod.options).forEach(opt => {
+                if (opt.value === 'F7') opt.style.display = cantF7 > 0 ? 'block' : 'none';
+                if (opt.value === 'F9') opt.style.display = cantF9 > 0 ? 'block' : 'none';
+                if (opt.value === 'F11') opt.style.display = cantF11 > 0 ? 'block' : 'none';
+            });
+
             window.actualizarOpcionesCanchas();
 
             document.getElementById('input-nombre-cliente').value = ""; 
             document.getElementById('input-telefono-cliente').value = ""; 
-            document.getElementById('input-semanas-fijo').value = "4"; 
             document.getElementById('modal-reserva-cliente').style.display = 'flex';
         }
 
         window.cerrarModalReservaCliente = function() { reservaEnProcesoHora = null; document.getElementById('modal-reserva-cliente').style.display = 'none'; }
 
+        // Ahora solo crea UN turno básico
         window.confirmarReservaCliente = async function() {
             const inputNombre = document.getElementById('input-nombre-cliente').value;
             const inputTelefono = document.getElementById('input-telefono-cliente').value;
             const selectCanchaModal = document.getElementById('select-cancha-modal').value;
             const modalidad = document.getElementById('select-modalidad').value;
-            let semanas = parseInt(document.getElementById('input-semanas-fijo').value) || 1;
 
             if (!inputNombre || inputNombre.trim() === "") { alert("Por favor, ingresa el Nombre."); return; }
             if (!inputTelefono || inputTelefono.trim() === "") { alert("Por favor, ingresa un teléfono."); return; }
@@ -471,11 +473,47 @@
             btnGuardar.innerText = "Guardando..."; btnGuardar.disabled = true;
 
             try {
-                let promesas = [];
-                let idGrupoFijo = "FIJO-" + Date.now();
-                let fechaBase = new Date(`${fechaSeleccionada}T12:00:00`); 
+                await addDoc(collection(db, "reservas"), { 
+                    fecha: fechaSeleccionada, hora: reservaEnProcesoHora, cancha: selectCanchaModal, modalidad: modalidad,
+                    jugador: inputNombre, telefono: inputTelefono,
+                    duracion: duracionGlobal, 
+                    fechaRegistro: new Date(), asistencia: false,
+                    esFijo: false 
+                });
+                alert(`¡Turno agendado con éxito!`);
+                window.cerrarModalReservaCliente();
+            } catch (error) { 
+                alert("Hubo un error al guardar el turno."); 
+            } finally {
+                btnGuardar.innerText = "Confirmar Turno"; btnGuardar.disabled = false;
+            }
+        }
 
-                for(let i=0; i<semanas; i++) {
+        // FUNCIONALIDAD EXCLUSIVA ADMIN: Convertir a turno fijo
+        window.hacerTurnoFijo = async function() {
+            if(!reservaSeleccionadaId) return;
+            
+            let semanasInput = prompt("¿Por cuántas semanas adicionales querés repetir este turno fijo?", "4");
+            if (semanasInput === null) return; // Canceló el prompt
+            
+            let semanas = parseInt(semanasInput);
+            if (isNaN(semanas) || semanas <= 0) {
+                alert("Ingresa un número válido mayor a 0."); return;
+            }
+
+            const resOriginal = reservasGlobales.find(r => r.id === reservaSeleccionadaId);
+            if(!resOriginal) return;
+
+            try {
+                // 1. Actualizar el turno actual para marcarlo como fijo
+                let idGrupoFijo = "FIJO-" + Date.now();
+                await updateDoc(doc(db, "reservas", reservaSeleccionadaId), { esFijo: true, grupoFijoId: idGrupoFijo });
+
+                // 2. Crear los futuros
+                let promesas = [];
+                let fechaBase = new Date(`${resOriginal.fecha}T12:00:00`); 
+
+                for(let i=1; i<=semanas; i++) {
                     let fechaTurno = new Date(fechaBase);
                     fechaTurno.setDate(fechaTurno.getDate() + (i * 7));
                     
@@ -485,45 +523,42 @@
                     let fechaTurnoISO = `${anio}-${mes}-${dia}`;
 
                     promesas.push(addDoc(collection(db, "reservas"), { 
-                        fecha: fechaTurnoISO, hora: reservaEnProcesoHora, cancha: selectCanchaModal, modalidad: modalidad,
-                        jugador: inputNombre, telefono: inputTelefono,
-                        duracion: duracionGlobal, 
+                        fecha: fechaTurnoISO, hora: resOriginal.hora, cancha: resOriginal.cancha, modalidad: resOriginal.modalidad,
+                        jugador: resOriginal.jugador, telefono: resOriginal.telefono,
+                        duracion: resOriginal.duracion, 
                         fechaRegistro: new Date(), asistencia: false,
                         esFijo: true, grupoFijoId: idGrupoFijo
                     }));
                 }
                 
                 await Promise.all(promesas);
-                alert(`¡Turno Fijo creado con éxito por ${semanas} semanas!`);
-                window.cerrarModalReservaCliente();
-            } catch (error) { 
-                alert("Hubo un error al guardar los turnos."); 
-            } finally {
-                btnGuardar.innerText = "Confirmar Turno Fijo"; btnGuardar.disabled = false;
+                alert(`¡Turno Fijo creado! Se reservó por ${semanas} semanas más hacia el futuro.`);
+                window.cerrarModalAcciones();
+            } catch (error) {
+                alert("Hubo un error al procesar el turno fijo.");
             }
         }
 
         window.guardarConfiguracion = async function() {
             const inputPrimero = document.getElementById('input-primer-turno').value;
             const inputUltimo = document.getElementById('input-ultimo-turno').value;
-            const inputPrecio = document.getElementById('input-precio').value;
-            const inputCanchasNum = document.getElementById('input-canchas').value; 
             const inputDuracion = document.getElementById('input-duracion').value; 
-            const inputEqF9 = document.getElementById('input-equiv-f9').value;
-            const inputEqF11 = document.getElementById('input-equiv-f11').value;
             
-            // Recoger los días seleccionados
+            const inF7 = document.getElementById('input-canchas-f7').value;
+            const inF9 = document.getElementById('input-canchas-f9').value;
+            const inF11 = document.getElementById('input-canchas-f11').value;
+            
             const checkboxesDias = document.querySelectorAll('.check-dia:checked');
             const diasSeleccionados = Array.from(checkboxesDias).map(cb => parseInt(cb.value));
             
-            if(inputPrimero && inputUltimo && inputPrecio && inputCanchasNum && inputDuracion) {
+            if(inputPrimero && inputUltimo && inputDuracion) {
                 try { 
                     await setDoc(doc(db, "configuracion", "turnero"), { 
                         primerTurno: inputPrimero, ultimoTurno: inputUltimo, 
-                        precioTurno: inputPrecio, canchas: inputCanchasNum,
                         duracionTurno: parseInt(inputDuracion),
-                        equivF9: parseInt(inputEqF9) || 2,
-                        equivF11: parseInt(inputEqF11) || 3,
+                        canchasF7: parseInt(inF7) || 0,
+                        canchasF9: parseInt(inF9) || 0,
+                        canchasF11: parseInt(inF11) || 0,
                         diasAbiertos: diasSeleccionados
                     }); 
                     window.cerrarModalConfig();
@@ -556,27 +591,24 @@
             if (documento.exists()) {
                 primerTurno = documento.data().primerTurno || "18:00";
                 ultimoTurno = documento.data().ultimoTurno || "23:00";
-                precioGlobal = documento.data().precioTurno || "15000";
-                cantidadCanchasGlobal = parseInt(documento.data().canchas) || 3; 
                 duracionGlobal = parseInt(documento.data().duracionTurno) || 60; 
-                equivF9Global = parseInt(documento.data().equivF9) || 2;
-                equivF11Global = parseInt(documento.data().equivF11) || 3;
+                cantF7 = documento.data().canchasF7 !== undefined ? parseInt(documento.data().canchasF7) : 6;
+                cantF9 = documento.data().canchasF9 !== undefined ? parseInt(documento.data().canchasF9) : 0;
+                cantF11 = documento.data().canchasF11 !== undefined ? parseInt(documento.data().canchasF11) : 1;
                 diasAbiertosGlobal = documento.data().diasAbiertos || [1, 2, 3, 4, 5, 6, 0];
                 
                 document.getElementById('input-primer-turno').value = primerTurno;
                 document.getElementById('input-ultimo-turno').value = ultimoTurno;
-                document.getElementById('input-precio').value = precioGlobal;
-                document.getElementById('input-canchas').value = cantidadCanchasGlobal;
                 document.getElementById('input-duracion').value = duracionGlobal;
-                document.getElementById('input-equiv-f9').value = equivF9Global;
-                document.getElementById('input-equiv-f11').value = equivF11Global;
+                document.getElementById('input-canchas-f7').value = cantF7;
+                document.getElementById('input-canchas-f9').value = cantF9;
+                document.getElementById('input-canchas-f11').value = cantF11;
                 
                 document.querySelectorAll('.check-dia').forEach(cb => {
                     cb.checked = diasAbiertosGlobal.includes(parseInt(cb.value));
                 });
             }
 
-            // Asegurar que fechaSeleccionada no caiga en un día cerrado
             let partesF = fechaSeleccionada.split('-');
             let fActual = new Date(partesF[0], partesF[1] - 1, partesF[2]);
             if (!diasAbiertosGlobal.includes(fActual.getDay())) {
@@ -598,7 +630,6 @@
         });
 
         window.renderizarPantallas = function() {
-            // Verificar si el día seleccionado está cerrado (por precaución)
             let partesF = fechaSeleccionada.split('-');
             let fSelec = new Date(partesF[0], partesF[1] - 1, partesF[2]);
             let diaCerrado = !diasAbiertosGlobal.includes(fSelec.getDay());
@@ -612,7 +643,7 @@
             if (diaCerrado) {
                 contenedorHorarios.innerHTML = `<p style="text-align:center; color:#9ca3af; margin-top:20px;">El complejo está cerrado este día.</p>`;
                 contenedorTurnero.innerHTML = `<p style="text-align:center; color:#9ca3af; margin-top:40px;">No hay actividad. Complejo cerrado.</p>`;
-                return; // Salimos temprano para no renderizar la grilla
+                return; 
             }
 
             // 1. VISTA JUGADOR
@@ -623,8 +654,11 @@
                 let bloquesNuevos = [];
                 for(let b=0; b < numBloquesNuevo; b++) { bloquesNuevos.push(window.sumarMinutos(hora, b * 30)); }
                 
-                let canchasOcupadas = new Set();
+                // Calculamos libres para cada tipo por separado
+                let libresF7 = cantF7, libresF9 = cantF9, libresF11 = cantF11;
                 
+                let ocupadasF7 = new Set(), ocupadasF9 = new Set(), ocupadasF11 = new Set();
+
                 reservasGlobales.forEach(r => {
                     if ((r.fecha || fechasValidas[0]) === fechaSeleccionada) {
                         let resDuracion = r.duracion || 60;
@@ -633,21 +667,30 @@
                         for(let b=0; b < numBloquesRes; b++) { bloquesRes.push(window.sumarMinutos(r.hora, b * 30)); }
                         
                         if(bloquesNuevos.some(b => bloquesRes.includes(b))) { 
-                            let baseCancha = parseInt(r.cancha || "1");
-                            let cNecesarias = r.modalidad === 'F11' ? equivF11Global : (r.modalidad === 'F9' ? equivF9Global : 1);
-                            for(let i=0; i<cNecesarias; i++) canchasOcupadas.add(baseCancha + i);
+                            let canchaNum = parseInt(r.cancha || "1");
+                            if (r.modalidad === 'F7') ocupadasF7.add(canchaNum);
+                            if (r.modalidad === 'F9') ocupadasF9.add(canchaNum);
+                            if (r.modalidad === 'F11') ocupadasF11.add(canchaNum);
                         }
                     }
                 });
 
-                let canchasLibres = cantidadCanchasGlobal - canchasOcupadas.size;
-                let hsTexto = duracionGlobal % 60 === 0 ? (duracionGlobal/60) : (duracionGlobal/60).toFixed(1);
+                libresF7 -= ocupadasF7.size;
+                libresF9 -= ocupadasF9.size;
+                libresF11 -= ocupadasF11.size;
 
-                if (canchasLibres > 0) {
+                if (libresF7 > 0 || libresF9 > 0 || libresF11 > 0) {
                     const div = document.createElement('div'); div.className = 'turno-item';
                     div.onclick = () => window.abrirModalReservaCliente(hora);
-                    let textoCanchas = canchasLibres === 1 ? "1 F7 libre" : `${canchasLibres} F7 libres`;
-                    div.innerHTML = `<span class="punto-verde"></span><span class="hora">${hora} hs | </span><span class="texto-disponible">Partido de ${hsTexto} hs</span><span class="texto-sillas-disp">${textoCanchas}</span>`;
+                    
+                    let textosDisponibles = [];
+                    if (libresF7 > 0) textosDisponibles.push(`${libresF7} F7`);
+                    if (libresF9 > 0) textosDisponibles.push(`${libresF9} F9`);
+                    if (libresF11 > 0) textosDisponibles.push(`${libresF11} F11`);
+                    
+                    let hsTexto = duracionGlobal % 60 === 0 ? (duracionGlobal/60) : (duracionGlobal/60).toFixed(1);
+
+                    div.innerHTML = `<span class="punto-verde"></span><span class="hora">${hora} hs | </span><span class="texto-disponible">Turno ${hsTexto} hs</span><span class="texto-sillas-disp">${textosDisponibles.join(' - ')} libres</span>`;
                     contenedorHorarios.appendChild(div);
                 }
             });
@@ -672,69 +715,69 @@
             }
             htmlGrilla += `</div>`;
 
-            // Columnas de Canchas
-            for(let c = 1; c <= cantidadCanchasGlobal; c++) {
-                htmlGrilla += `<div style="flex: 1; min-width: 140px; border-right: 1px solid #2c3540; position: relative;">`;
-                htmlGrilla += `<div style="height: 40px; border-bottom: 1px solid #2c3540; text-align: center; line-height: 40px; font-weight: bold; background: #242c36; font-size: 0.9em;">Cancha ${c}</div>`;
-                
-                let reservasSilla = reservasAMostrar.filter(r => parseInt(r.cancha || "1") === c);
-                let bloquesOcupadosColumna = new Set();
-                
-                reservasAMostrar.forEach(res => {
-                    let baseCancha = parseInt(res.cancha || "1");
-                    let cNecesarias = res.modalidad === 'F11' ? equivF11Global : (res.modalidad === 'F9' ? equivF9Global : 1);
-                    if (c >= baseCancha && c < baseCancha + cNecesarias) {
+            // Función para renderizar columnas por tipo
+            const renderizarColumnasPorTipo = (modalidad, cantidad) => {
+                for(let c = 1; c <= cantidad; c++) {
+                    htmlGrilla += `<div style="flex: 1; min-width: 140px; border-right: 1px solid #2c3540; position: relative;">`;
+                    htmlGrilla += `<div style="height: 40px; border-bottom: 1px solid #2c3540; text-align: center; line-height: 40px; font-weight: bold; background: #242c36; font-size: 0.9em; color: #d1d5db;">Cancha ${c} <span style="font-size: 0.7em; color: #9ca3af;">(${modalidad})</span></div>`;
+                    
+                    let reservasSilla = reservasAMostrar.filter(r => r.modalidad === modalidad && parseInt(r.cancha || "1") === c);
+                    let bloquesOcupadosColumna = new Set();
+                    
+                    reservasSilla.forEach(res => {
                         let resDur = res.duracion || 60;
                         let numBloques = resDur / 30;
                         for(let b=0; b < numBloques; b++) { bloquesOcupadosColumna.add(window.sumarMinutos(res.hora, b * 30)); }
+                    });
+
+                    for (let m = minActual; m < minFin; m += 30) {
+                        let esHoraEnPunto = (m % 60 === 0);
+                        let borderStyle = esHoraEnPunto ? 'border-bottom: 1px dashed rgba(255,255,255,0.05);' : 'border-bottom: 1px solid #2c3540;';
+                        let hLabel = Math.floor(m / 60) % 24;
+                        let mLabel = m % 60;
+                        let horaFormateada = `${hLabel.toString().padStart(2, '0')}:${mLabel.toString().padStart(2, '0')}`;
+
+                        if (!bloquesOcupadosColumna.has(horaFormateada)) {
+                            htmlGrilla += `<div class="celda-vacia-hover" style="height: 40px; ${borderStyle} box-sizing: border-box; cursor: pointer;" onclick="window.abrirModalReservaCliente('${horaFormateada}')"></div>`;
+                        } else {
+                            htmlGrilla += `<div style="height: 40px; ${borderStyle} box-sizing: border-box;"></div>`;
+                        }
                     }
-                });
 
-                for (let m = minActual; m < minFin; m += 30) {
-                    let esHoraEnPunto = (m % 60 === 0);
-                    let borderStyle = esHoraEnPunto ? 'border-bottom: 1px dashed rgba(255,255,255,0.05);' : 'border-bottom: 1px solid #2c3540;';
-                    let hLabel = Math.floor(m / 60) % 24;
-                    let mLabel = m % 60;
-                    let horaFormateada = `${hLabel.toString().padStart(2, '0')}:${mLabel.toString().padStart(2, '0')}`;
+                    reservasSilla.forEach(res => {
+                        let minRes = window.aMinutos(res.hora);
+                        if (minRes < minActual && minFin > 1440) minRes += 1440;
+                        
+                        let offsetTop = ((minRes - minActual) / 30) * 40 + 40; 
+                        let resDur = res.duracion || 60;
+                        let height = (resDur / 30) * 40; 
 
-                    if (!bloquesOcupadosColumna.has(horaFormateada)) {
-                        htmlGrilla += `<div class="celda-vacia-hover" style="height: 40px; ${borderStyle} box-sizing: border-box; cursor: pointer;" onclick="window.abrirModalReservaCliente('${horaFormateada}')"></div>`;
-                    } else {
-                        htmlGrilla += `<div style="height: 40px; ${borderStyle} box-sizing: border-box;"></div>`;
-                    }
-                }
-
-                reservasSilla.forEach(res => {
-                    let minRes = window.aMinutos(res.hora);
-                    if (minRes < minActual && minFin > 1440) minRes += 1440;
-                    
-                    let offsetTop = ((minRes - minActual) / 30) * 40 + 40; 
-                    let resDur = res.duracion || 60;
-                    let height = (resDur / 30) * 40; 
-
-                    let extraClass = res.asistencia ? "asistio" : "";
-                    let colorTexto = res.asistencia ? "white" : "#171d24";
-                    let modalidadBadge = res.modalidad || "F7";
-                    
-                    let numCanchasOcupa = res.modalidad === 'F11' ? equivF11Global : (res.modalidad === 'F9' ? equivF9Global : 1);
-                    let cardWidth = `calc(${numCanchasOcupa * 100}% + ${numCanchasOcupa - 1}px - 8px)`;
-                    
-                    htmlGrilla += `
-                        <div class="tarjeta-reserva-grilla ${extraClass}" onclick="window.abrirModal('${res.id}')" 
-                             style="position: absolute; top: ${offsetTop}px; left: 4px; width: ${cardWidth}; height: ${height - 6}px; 
-                                    padding: 8px; font-size: 0.85em; overflow: hidden; border-radius: 6px; cursor: pointer; 
-                                    box-shadow: 0 4px 6px rgba(0,0,0,0.4); display: flex; flex-direction: column; z-index: 10;">
-                            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                                <span style="font-weight: 900; font-size: 1.1em; color: ${colorTexto}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${res.jugador}</span>
-                                <span style="background: rgba(0,0,0,0.2); padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 0.8em; color: ${colorTexto};">${modalidadBadge}</span>
+                        // Color por defecto naranja, si asistió azul, si es fijo violeta oscuro
+                        let extraClass = res.asistencia ? "asistio" : (res.esFijo ? "fijo" : "");
+                        let colorTexto = (res.asistencia || res.esFijo) ? "white" : "#171d24";
+                        
+                        htmlGrilla += `
+                            <div class="tarjeta-reserva-grilla ${extraClass}" onclick="window.abrirModal('${res.id}')" 
+                                 style="position: absolute; top: ${offsetTop}px; left: 4px; right: 4px; height: ${height - 6}px; 
+                                        padding: 8px; font-size: 0.85em; overflow: hidden; border-radius: 6px; cursor: pointer; 
+                                        box-shadow: 0 4px 6px rgba(0,0,0,0.4); display: flex; flex-direction: column; z-index: 10;">
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                                    <span style="font-weight: 900; font-size: 1.1em; color: ${colorTexto}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${res.jugador}</span>
+                                </div>
+                                <span style="margin-top: 4px; color: ${colorTexto}; opacity: 0.8; font-weight: 700;">${res.hora} hs ${res.esFijo ? '🔄 Fijo' : ''}</span>
+                                <span style="margin-top: auto; font-size: 0.9em; font-weight: bold; color: ${colorTexto}; opacity: 0.9;">📱 ${res.telefono || 'Sin tel'}</span>
                             </div>
-                            <span style="margin-top: 4px; color: ${colorTexto}; opacity: 0.8; font-weight: 700;">${res.hora} hs ${res.esFijo ? '🔄 Fijo' : ''}</span>
-                            <span style="margin-top: auto; font-size: 0.9em; font-weight: bold; color: ${colorTexto}; opacity: 0.9;">📱 ${res.telefono || 'Sin tel'}</span>
-                        </div>
-                    `;
-                });
-                htmlGrilla += `</div>`; 
-            }
+                        `;
+                    });
+                    htmlGrilla += `</div>`; 
+                }
+            };
+
+            // Renderizar secuencialmente F7, luego F9, luego F11
+            if(cantF7 > 0) renderizarColumnasPorTipo('F7', cantF7);
+            if(cantF9 > 0) renderizarColumnasPorTipo('F9', cantF9);
+            if(cantF11 > 0) renderizarColumnasPorTipo('F11', cantF11);
+            
             htmlGrilla += `</div>`; 
 
             contenedorTurnero.innerHTML = htmlGrilla;
