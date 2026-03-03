@@ -44,6 +44,10 @@
         .dia-nombre { font-size: 0.8em; color: #9ca3af; text-transform: uppercase; font-weight: bold;}
         .dia-item.activo .dia-nombre { color: #e5e7eb; }
         .dia-numero { font-size: 1.4em; font-weight: bold; margin-top: 4px; }
+        
+        /* Estilo para días cerrados */
+        .dia-cerrado { opacity: 0.3; cursor: not-allowed; }
+        .dia-cerrado:hover { background-color: #242c36; }
 
         .sub-header { display: flex; justify-content: space-between; align-items: center; color: #9ca3af; font-size: 0.9em; padding-bottom: 10px; border-bottom: 1px solid #2c3540; margin-bottom: 10px; font-weight: bold;}
         
@@ -176,7 +180,7 @@
     <div id="modal-config" class="modal-overlay">
         <div class="modal-content">
             <h3 style="margin: 0; margin-bottom: 15px; border-bottom: 1px solid #44505d; padding-bottom: 10px;">⚙️ Configuración del Complejo</h3>
-            <div style="text-align: left; display: flex; flex-direction: column; gap: 15px;">
+            <div style="text-align: left; display: flex; flex-direction: column; gap: 12px;">
                 <div style="display: flex; gap: 10px; justify-content: space-between;">
                     <div style="flex: 1;"><label style="font-size: 0.9em; color: #d1d5db;">Primer Turno:</label><input type="time" id="input-primer-turno" class="input-form" style="margin-top: 4px;"></div>
                     <div style="flex: 1;"><label style="font-size: 0.9em; color: #d1d5db;">Último Turno:</label><input type="time" id="input-ultimo-turno" class="input-form" style="margin-top: 4px;"></div>
@@ -194,10 +198,22 @@
                     </select>
                 </div>
                 <div style="border-top: 1px solid #44505d; padding-top: 10px;">
-                    <label style="font-size: 0.9em; color: #d1d5db; font-weight: bold;">Equivalencias Modulares (Canchas F7 requeridas):</label>
+                    <label style="font-size: 0.9em; color: #d1d5db; font-weight: bold;">Equivalencias Modulares (Canchas F7):</label>
                     <div style="display: flex; gap: 10px; justify-content: space-between; margin-top: 8px;">
                         <div style="flex: 1;"><label style="font-size: 0.85em; color: #9ca3af;">Para un F9:</label><input type="number" id="input-equiv-f9" min="1" max="5" class="input-form" style="margin-top: 4px;"></div>
                         <div style="flex: 1;"><label style="font-size: 0.85em; color: #9ca3af;">Para un F11:</label><input type="number" id="input-equiv-f11" min="1" max="5" class="input-form" style="margin-top: 4px;"></div>
+                    </div>
+                </div>
+                <div style="border-top: 1px solid #44505d; padding-top: 10px;">
+                    <label style="font-size: 0.9em; color: #d1d5db; font-weight: bold;">Días Abiertos:</label>
+                    <div style="display: flex; gap: 8px; justify-content: space-between; margin-top: 8px; font-size: 0.85em; color: #9ca3af;">
+                        <label><input type="checkbox" class="check-dia" value="1"> Lu</label>
+                        <label><input type="checkbox" class="check-dia" value="2"> Ma</label>
+                        <label><input type="checkbox" class="check-dia" value="3"> Mi</label>
+                        <label><input type="checkbox" class="check-dia" value="4"> Ju</label>
+                        <label><input type="checkbox" class="check-dia" value="5"> Vi</label>
+                        <label><input type="checkbox" class="check-dia" value="6"> Sa</label>
+                        <label><input type="checkbox" class="check-dia" value="0"> Do</label>
                     </div>
                 </div>
             </div>
@@ -254,6 +270,18 @@
         }
         let fechaSeleccionada = fechasValidas[0]; 
 
+        let primerTurno = "18:00"; 
+        let ultimoTurno = "23:00";   
+        let precioGlobal = "15000"; 
+        let cantidadCanchasGlobal = 3; 
+        let duracionGlobal = 60; 
+        let equivF9Global = 2; 
+        let equivF11Global = 3; 
+        let diasAbiertosGlobal = [1, 2, 3, 4, 5, 6, 0]; // 0=Dom, 1=Lun... Por defecto abre todos
+        let reservasGlobales = [];
+        let reservaSeleccionadaId = null; 
+        let reservaEnProcesoHora = null;
+
         function renderizarCalendarios() {
             const calCliente = document.getElementById('calendario-cliente');
             const calTurnero = document.getElementById('calendario-turnero');
@@ -265,9 +293,16 @@
                 const f = new Date(partes[0], partes[1] - 1, partes[2]);
                 const nombreDia = index === 0 ? 'HOY' : diasCortos[f.getDay()];
                 const numeroDia = f.getDate().toString().padStart(2, '0');
+                
                 const esActivo = fechaISO === fechaSeleccionada ? 'activo' : '';
+                const esCerrado = !diasAbiertosGlobal.includes(f.getDay());
+                const claseCerrado = esCerrado ? 'dia-cerrado' : '';
+                const onclickAttr = esCerrado ? '' : `onclick="window.seleccionarFecha('${fechaISO}')"`;
 
-                const htmlDia = `<div class="dia-item ${esActivo}" onclick="window.seleccionarFecha('${fechaISO}')"><span class="dia-nombre">${nombreDia}</span><span class="dia-numero">${numeroDia}</span></div>`;
+                const htmlDia = `<div class="dia-item ${esActivo} ${claseCerrado}" ${onclickAttr} title="${esCerrado ? 'Cerrado' : ''}">
+                                    <span class="dia-nombre">${nombreDia}</span>
+                                    <span class="dia-numero">${numeroDia}</span>
+                                 </div>`;
                 calCliente.innerHTML += htmlDia;
                 calTurnero.innerHTML += htmlDia;
             });
@@ -284,17 +319,6 @@
             horariosBase.push(`${horaStr}:00`); horariosBase.push(`${horaStr}:30`);
         }
         horariosBase.reverse(); 
-
-        let primerTurno = "18:00"; 
-        let ultimoTurno = "23:00";   
-        let precioGlobal = "15000"; 
-        let cantidadCanchasGlobal = 3; 
-        let duracionGlobal = 60; 
-        let equivF9Global = 2; // Canchas F7 necesarias para armar un F9
-        let equivF11Global = 3; // Canchas F7 necesarias para armar un F11
-        let reservasGlobales = [];
-        let reservaSeleccionadaId = null; 
-        let reservaEnProcesoHora = null;
 
         window.aMinutos = function(horaStr) { let [h, m] = horaStr.split(':').map(Number); return (h * 60) + m; }
         window.sumarMinutos = function(horaStr, minutosAñadir) {
@@ -358,7 +382,6 @@
             contenedor.innerHTML = html;
         }
 
-        // Lógica central para calcular canchas disponibles según modalidad
         window.actualizarOpcionesCanchas = function() {
             if (!reservaEnProcesoHora) return;
             
@@ -381,7 +404,6 @@
                     if(bloquesNuevos.some(b => bloquesRes.includes(b))) {
                         let baseCancha = parseInt(r.cancha || "1");
                         let cNecesarias = r.modalidad === 'F11' ? equivF11Global : (r.modalidad === 'F9' ? equivF9Global : 1);
-                        // Bloqueamos la cancha base y las adyacentes que usa
                         for(let i=0; i<cNecesarias; i++) canchasOcupadas.add(baseCancha + i);
                     }
                 }
@@ -393,13 +415,11 @@
 
             for(let c = 1; c <= cantidadCanchasGlobal; c++) {
                 let espacioSuficiente = true;
-                // Verificamos si la cancha actual Y las adyacentes necesarias están libres
                 for(let i=0; i<numCanchasNecesarias; i++) {
                     if ((c + i) > cantidadCanchasGlobal || canchasOcupadas.has(c + i)) {
                         espacioSuficiente = false; break;
                     }
                 }
-                
                 if(espacioSuficiente) { 
                     selectCancha.innerHTML += `<option value="${c}" style="color: black;">Cancha ${c}</option>`; 
                     opcionesValidas++;
@@ -418,9 +438,7 @@
         window.abrirModalReservaCliente = function(hora) {
             let minInicio = window.aMinutos(hora);
             let minUltimo = window.aMinutos(ultimoTurno);
-            if (minInicio > minUltimo) {
-                alert("Este horario supera el límite del complejo."); return;
-            }
+            if (minInicio > minUltimo) { alert("Este horario supera el límite del complejo."); return; }
 
             reservaEnProcesoHora = hora;
             const partes = fechaSeleccionada.split('-');
@@ -428,7 +446,7 @@
             document.getElementById('reserva-fecha-display').innerText = `${f.getDate()}/${f.getMonth() + 1}/${f.getFullYear()}`;
             document.getElementById('reserva-hora-display').innerText = `${hora} hs (${duracionGlobal/60}h)`;
 
-            document.getElementById('select-modalidad').value = 'F7'; // Reset a F7 por defecto
+            document.getElementById('select-modalidad').value = 'F7'; 
             window.actualizarOpcionesCanchas();
 
             document.getElementById('input-nombre-cliente').value = ""; 
@@ -439,7 +457,6 @@
 
         window.cerrarModalReservaCliente = function() { reservaEnProcesoHora = null; document.getElementById('modal-reserva-cliente').style.display = 'none'; }
 
-        // Creación del Turno Fijo
         window.confirmarReservaCliente = async function() {
             const inputNombre = document.getElementById('input-nombre-cliente').value;
             const inputTelefono = document.getElementById('input-telefono-cliente').value;
@@ -447,7 +464,7 @@
             const modalidad = document.getElementById('select-modalidad').value;
             let semanas = parseInt(document.getElementById('input-semanas-fijo').value) || 1;
 
-            if (!inputNombre || inputNombre.trim() === "") { alert("Por favor, ingresa el Nombre del Equipo o Jugador."); return; }
+            if (!inputNombre || inputNombre.trim() === "") { alert("Por favor, ingresa el Nombre."); return; }
             if (!inputTelefono || inputTelefono.trim() === "") { alert("Por favor, ingresa un teléfono."); return; }
 
             const btnGuardar = document.getElementById('btn-guardar-reserva');
@@ -456,7 +473,6 @@
             try {
                 let promesas = [];
                 let idGrupoFijo = "FIJO-" + Date.now();
-                // Usamos una fecha base al mediodía para evitar problemas de zona horaria al sumar días
                 let fechaBase = new Date(`${fechaSeleccionada}T12:00:00`); 
 
                 for(let i=0; i<semanas; i++) {
@@ -496,6 +512,10 @@
             const inputEqF9 = document.getElementById('input-equiv-f9').value;
             const inputEqF11 = document.getElementById('input-equiv-f11').value;
             
+            // Recoger los días seleccionados
+            const checkboxesDias = document.querySelectorAll('.check-dia:checked');
+            const diasSeleccionados = Array.from(checkboxesDias).map(cb => parseInt(cb.value));
+            
             if(inputPrimero && inputUltimo && inputPrecio && inputCanchasNum && inputDuracion) {
                 try { 
                     await setDoc(doc(db, "configuracion", "turnero"), { 
@@ -503,7 +523,8 @@
                         precioTurno: inputPrecio, canchas: inputCanchasNum,
                         duracionTurno: parseInt(inputDuracion),
                         equivF9: parseInt(inputEqF9) || 2,
-                        equivF11: parseInt(inputEqF11) || 3
+                        equivF11: parseInt(inputEqF11) || 3,
+                        diasAbiertos: diasSeleccionados
                     }); 
                     window.cerrarModalConfig();
                     alert("¡Configuración guardada!"); 
@@ -512,7 +533,7 @@
         }
 
         window.accionAsistencia = async function() { if(reservaSeleccionadaId) { await updateDoc(doc(db, "reservas", reservaSeleccionadaId), { asistencia: true }); window.cerrarModalAcciones(); } }
-        window.accionEliminar = async function() { if(reservaSeleccionadaId && confirm("¿Estás seguro de cancelar ESTE partido del turno?")) { await deleteDoc(doc(db, "reservas", reservaSeleccionadaId)); window.cerrarModalAcciones(); } }
+        window.accionEliminar = async function() { if(reservaSeleccionadaId && confirm("¿Estás seguro de cancelar ESTE partido?")) { await deleteDoc(doc(db, "reservas", reservaSeleccionadaId)); window.cerrarModalAcciones(); } }
         
         window.enviarWhatsApp = function() {
             if(reservaSeleccionadaId) {
@@ -527,9 +548,7 @@
                     
                     window.open(url, '_blank');
                     window.cerrarModalAcciones();
-                } else {
-                    alert("Esta reserva no tiene un número válido.");
-                }
+                } else { alert("Esta reserva no tiene un número válido."); }
             }
         }
 
@@ -542,6 +561,7 @@
                 duracionGlobal = parseInt(documento.data().duracionTurno) || 60; 
                 equivF9Global = parseInt(documento.data().equivF9) || 2;
                 equivF11Global = parseInt(documento.data().equivF11) || 3;
+                diasAbiertosGlobal = documento.data().diasAbiertos || [1, 2, 3, 4, 5, 6, 0];
                 
                 document.getElementById('input-primer-turno').value = primerTurno;
                 document.getElementById('input-ultimo-turno').value = ultimoTurno;
@@ -550,12 +570,24 @@
                 document.getElementById('input-duracion').value = duracionGlobal;
                 document.getElementById('input-equiv-f9').value = equivF9Global;
                 document.getElementById('input-equiv-f11').value = equivF11Global;
-            } else {
-                // Set defaults if config doc doesn't exist yet
-                document.getElementById('input-equiv-f9').value = equivF9Global;
-                document.getElementById('input-equiv-f11').value = equivF11Global;
-                document.getElementById('input-canchas').value = cantidadCanchasGlobal;
+                
+                document.querySelectorAll('.check-dia').forEach(cb => {
+                    cb.checked = diasAbiertosGlobal.includes(parseInt(cb.value));
+                });
             }
+
+            // Asegurar que fechaSeleccionada no caiga en un día cerrado
+            let partesF = fechaSeleccionada.split('-');
+            let fActual = new Date(partesF[0], partesF[1] - 1, partesF[2]);
+            if (!diasAbiertosGlobal.includes(fActual.getDay())) {
+                let proximoAbierto = fechasValidas.find(fISO => {
+                    let pf = fISO.split('-');
+                    return diasAbiertosGlobal.includes(new Date(pf[0], pf[1] - 1, pf[2]).getDay());
+                });
+                if (proximoAbierto) fechaSeleccionada = proximoAbierto;
+            }
+
+            renderizarCalendarios(); 
             renderizarPantallas(); 
         });
 
@@ -566,10 +598,24 @@
         });
 
         window.renderizarPantallas = function() {
-            // 1. VISTA JUGADOR
+            // Verificar si el día seleccionado está cerrado (por precaución)
+            let partesF = fechaSeleccionada.split('-');
+            let fSelec = new Date(partesF[0], partesF[1] - 1, partesF[2]);
+            let diaCerrado = !diasAbiertosGlobal.includes(fSelec.getDay());
+
             const contenedorHorarios = document.getElementById('lista-horarios');
-            contenedorHorarios.innerHTML = '';
+            const contenedorTurnero = document.getElementById('lista-reservas-turnero');
             
+            contenedorHorarios.innerHTML = '';
+            contenedorTurnero.innerHTML = '';
+
+            if (diaCerrado) {
+                contenedorHorarios.innerHTML = `<p style="text-align:center; color:#9ca3af; margin-top:20px;">El complejo está cerrado este día.</p>`;
+                contenedorTurnero.innerHTML = `<p style="text-align:center; color:#9ca3af; margin-top:40px;">No hay actividad. Complejo cerrado.</p>`;
+                return; // Salimos temprano para no renderizar la grilla
+            }
+
+            // 1. VISTA JUGADOR
             const horariosFiltrados = horariosBase.filter(h => h >= primerTurno && h <= ultimoTurno);
             const numBloquesNuevo = duracionGlobal / 30;
 
@@ -607,11 +653,7 @@
             });
 
             // 2. VISTA TURNERO
-            const contenedorTurnero = document.getElementById('lista-reservas-turnero');
-            contenedorTurnero.innerHTML = '';
-
             let reservasAMostrar = reservasGlobales.filter(r => (r.fecha || fechasValidas[0]) === fechaSeleccionada);
-
             let minActual = window.aMinutos(primerTurno);
             let minFin = window.aMinutos(ultimoTurno) + duracionGlobal; 
             if (minFin <= minActual) minFin += 1440; 
@@ -635,15 +677,12 @@
                 htmlGrilla += `<div style="flex: 1; min-width: 140px; border-right: 1px solid #2c3540; position: relative;">`;
                 htmlGrilla += `<div style="height: 40px; border-bottom: 1px solid #2c3540; text-align: center; line-height: 40px; font-weight: bold; background: #242c36; font-size: 0.9em;">Cancha ${c}</div>`;
                 
-                // Extraer reservas donde esta cancha es la cancha BASE
                 let reservasSilla = reservasAMostrar.filter(r => parseInt(r.cancha || "1") === c);
-                
-                // Calcular bloques ocupados por TODAS las reservas para dibujar el grid clickeable correctamente
                 let bloquesOcupadosColumna = new Set();
+                
                 reservasAMostrar.forEach(res => {
                     let baseCancha = parseInt(res.cancha || "1");
                     let cNecesarias = res.modalidad === 'F11' ? equivF11Global : (res.modalidad === 'F9' ? equivF9Global : 1);
-                    // Si esta columna (c) cae dentro de las canchas que ocupa la reserva
                     if (c >= baseCancha && c < baseCancha + cNecesarias) {
                         let resDur = res.duracion || 60;
                         let numBloques = resDur / 30;
@@ -651,11 +690,9 @@
                     }
                 });
 
-                // Dibujar el fondo cuadriculado
                 for (let m = minActual; m < minFin; m += 30) {
                     let esHoraEnPunto = (m % 60 === 0);
                     let borderStyle = esHoraEnPunto ? 'border-bottom: 1px dashed rgba(255,255,255,0.05);' : 'border-bottom: 1px solid #2c3540;';
-                    
                     let hLabel = Math.floor(m / 60) % 24;
                     let mLabel = m % 60;
                     let horaFormateada = `${hLabel.toString().padStart(2, '0')}:${mLabel.toString().padStart(2, '0')}`;
@@ -667,7 +704,6 @@
                     }
                 }
 
-                // Renderizar las Tarjetas (solo en la columna de la cancha base)
                 reservasSilla.forEach(res => {
                     let minRes = window.aMinutos(res.hora);
                     if (minRes < minActual && minFin > 1440) minRes += 1440;
@@ -680,9 +716,7 @@
                     let colorTexto = res.asistencia ? "white" : "#171d24";
                     let modalidadBadge = res.modalidad || "F7";
                     
-                    // Magia CSS: Expandir el ancho de la tarjeta según la cantidad de canchas F7 que ocupe
                     let numCanchasOcupa = res.modalidad === 'F11' ? equivF11Global : (res.modalidad === 'F9' ? equivF9Global : 1);
-                    // 100% cubre la columna actual. Sumamos 100% por cada columna extra, más los pixeles del borde.
                     let cardWidth = `calc(${numCanchasOcupa * 100}% + ${numCanchasOcupa - 1}px - 8px)`;
                     
                     htmlGrilla += `
@@ -699,7 +733,6 @@
                         </div>
                     `;
                 });
-                
                 htmlGrilla += `</div>`; 
             }
             htmlGrilla += `</div>`; 
