@@ -146,12 +146,13 @@
                 <div>
                     <label style="font-size: 0.9em; color: #d1d5db; font-weight: bold;">Modalidad del Partido:</label>
                     <select id="select-modalidad" class="input-form" style="margin-top: 5px;" onchange="window.actualizarOpcionesCanchas()"></select>
+                    <p id="mensaje-disponibilidad" style="color: #ef4444; font-size: 0.85em; font-weight: bold; margin: 5px 0 0 0; display: none;">No hay canchas disponibles para esta modalidad.</p>
                 </div>
-                <div>
-                    <label style="font-size: 0.9em; color: #d1d5db; font-weight: bold;">Elige tu Cancha (Auto-gestionada):</label>
-                    <select id="select-cancha-modal" class="input-form" style="margin-top: 5px;"></select>
-                    <small style="font-size: 0.75em; color: #9ca3af; margin-top: 4px; display: block;">El sistema optimiza el espacio para no romper canchas grandes si hay alternativas.</small>
+                
+                <div style="display: none;">
+                    <select id="select-cancha-modal" class="input-form"></select>
                 </div>
+
                 <div>
                     <label style="font-size: 0.9em; color: #d1d5db; font-weight: bold;">Nombre del Equipo / Jugador:</label>
                     <input type="text" id="input-nombre-cliente" class="input-form" placeholder="Ej: Los Pibes FC" style="margin-top: 5px;">
@@ -365,6 +366,7 @@
             let opciones = [];
             const selectCancha = document.getElementById('select-cancha-modal');
             const btnGuardar = document.getElementById('btn-guardar-reserva');
+            const msjDisp = document.getElementById('mensaje-disponibilidad');
 
             if (mod === 'F7') {
                 let f7PurasLibres = columnasGrid.filter(c => c.type === 'F7' && !ocupadas.has(c.id));
@@ -372,17 +374,17 @@
                 let subsF11Libres = columnasGrid.filter(c => c.type === 'F11-Sub' && !ocupadas.has(c.id));
                 
                 if (f7PurasLibres.length > 0) {
-                    opciones = f7PurasLibres.map(c => ({ id: c.id, label: `${c.name} - (Ideal)` }));
+                    opciones = f7PurasLibres.map(c => ({ id: c.id, label: `${c.name}` }));
                 } else if (subsF9Libres.length > 0) {
                     let cuentaPadres = {};
                     subsF9Libres.forEach(c => cuentaPadres[c.parent] = (cuentaPadres[c.parent] || 0) + 1);
                     subsF9Libres.sort((a, b) => cuentaPadres[a.parent] - cuentaPadres[b.parent]);
-                    opciones = subsF9Libres.map(c => ({ id: c.id, label: `${c.name} - (Adaptada en F9)` }));
+                    opciones = subsF9Libres.map(c => ({ id: c.id, label: `${c.name}` }));
                 } else if (subsF11Libres.length > 0) {
                     let cuentaPadres = {};
                     subsF11Libres.forEach(c => cuentaPadres[c.parent] = (cuentaPadres[c.parent] || 0) + 1);
                     subsF11Libres.sort((a, b) => cuentaPadres[a.parent] - cuentaPadres[b.parent]);
-                    opciones = subsF11Libres.map(c => ({ id: c.id, label: `${c.name} - (Adaptada en F11)` }));
+                    opciones = subsF11Libres.map(c => ({ id: c.id, label: `${c.name}` }));
                 }
 
             } else if (mod === 'F9') {
@@ -390,7 +392,7 @@
                 for(let i=1; i<=cantF9; i++) {
                     let libre = true;
                     for(let j=1; j<=equivF9; j++) { if(ocupadas.has(`F9-${i}-S${j}`)) libre = false; }
-                    if(libre) f9Completas.push({ id: `F9-${i}`, label: `Cancha F9-${i} (Completa)` });
+                    if(libre) f9Completas.push({ id: `F9-${i}`, label: `Cancha F9-${i}` });
                 }
 
                 let f9Adaptadas = [];
@@ -405,7 +407,7 @@
                     if (startIdx !== -1) {
                         let libresPadre = 0;
                         for (let s=1; s<=equivF11; s++) { if(!ocupadas.has(`${parent}-S${s}`)) libresPadre++; }
-                        f9Adaptadas.push({ id: `${parent}-S${startIdx}`, label: `Cancha F11-${i} (Adaptada a F9)`, libres: libresPadre });
+                        f9Adaptadas.push({ id: `${parent}-S${startIdx}`, label: `Cancha F11-${i}`, libres: libresPadre });
                     }
                 }
                 
@@ -421,17 +423,18 @@
                 for(let i=1; i<=cantF11; i++) {
                     let canchaEnteraLibre = true;
                     for(let j=1; j<=equivF11; j++) { if(ocupadas.has(`F11-${i}-S${j}`)) canchaEnteraLibre = false; }
-                    if (canchaEnteraLibre) opciones.push({ id: `F11-${i}`, label: `Cancha F11-${i} (Completa)` });
+                    if (canchaEnteraLibre) opciones.push({ id: `F11-${i}`, label: `Cancha F11-${i}` });
                 }
             }
 
             selectCancha.innerHTML = '';
             if (opciones.length === 0) {
-                selectCancha.innerHTML = `<option value="">Sin espacio para ${mod}</option>`;
                 btnGuardar.disabled = true; btnGuardar.style.opacity = '0.5';
+                msjDisp.style.display = 'block';
             } else {
                 opciones.forEach(o => selectCancha.innerHTML += `<option value="${o.id}" style="color:black;">${o.label}</option>`);
                 btnGuardar.disabled = false; btnGuardar.style.opacity = '1';
+                msjDisp.style.display = 'none';
             }
         }
 
@@ -470,7 +473,7 @@
             const mod = document.getElementById('select-modalidad').value;
 
             if (!iN) { alert("Ingresa el Nombre."); return; }
-            if (!cM) { alert("No hay cancha seleccionada válida."); return; }
+            if (!cM) { alert("Error de asignación de cancha."); return; }
             
             const btn = document.getElementById('btn-guardar-reserva');
             btn.innerText = "Guardando..."; btn.disabled = true;
