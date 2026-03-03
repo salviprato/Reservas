@@ -75,7 +75,6 @@
         .contenedor-grilla::-webkit-scrollbar-thumb { background: #44505d; border-radius: 4px; }
         
         .tarjeta-reserva-grilla {
-            /* COLOR ESTILO REFERENCIA VISUAL */
             background-color: #a7f3d0; 
             color: #064e3b; 
             border-left: 5px solid #10b981; 
@@ -180,6 +179,7 @@
                     <div style="flex: 1;"><label style="font-size: 0.9em; color: #d1d5db;">Abre:</label><input type="time" id="input-primer-turno" class="input-form" style="margin-top: 4px;"></div>
                     <div style="flex: 1;"><label style="font-size: 0.9em; color: #d1d5db;">Cierra:</label><input type="time" id="input-ultimo-turno" class="input-form" style="margin-top: 4px;"></div>
                 </div>
+                
                 <div style="display: flex; gap: 10px; justify-content: space-between;">
                     <div style="flex: 1;"><label style="font-size: 0.9em; color: #d1d5db;">Duración:</label>
                         <select id="input-duracion" class="input-form" style="margin-top: 4px;">
@@ -188,7 +188,15 @@
                             <option value="120">120 Min (2h)</option>
                         </select>
                     </div>
-                    <div style="flex: 1;"><label style="font-size: 0.9em; color: #d1d5db;">Precio Base ($):</label><input type="number" id="input-precio" step="500" class="input-form" style="margin-top: 4px;"></div>
+                </div>
+
+                <div style="border-top: 1px solid #44505d; padding-top: 10px; margin-top: 5px;">
+                    <label style="font-size: 0.9em; color: #3b82f6; font-weight: bold;">Precios por Modalidad ($)</label>
+                    <div style="display: flex; gap: 10px; margin-top: 8px;">
+                        <div style="flex: 1;"><label style="font-size: 0.85em; color: #d1d5db;">F7:</label><input type="number" id="input-precio-f7" step="500" class="input-form" style="margin-top: 4px;"></div>
+                        <div style="flex: 1;"><label style="font-size: 0.85em; color: #d1d5db;">F9:</label><input type="number" id="input-precio-f9" step="500" class="input-form" style="margin-top: 4px;"></div>
+                        <div style="flex: 1;"><label style="font-size: 0.85em; color: #d1d5db;">F11:</label><input type="number" id="input-precio-f11" step="500" class="input-form" style="margin-top: 4px;"></div>
+                    </div>
                 </div>
                 
                 <div style="border-top: 1px solid #44505d; padding-top: 10px;">
@@ -282,7 +290,10 @@
         let primerTurno = "18:00"; 
         let ultimoTurno = "23:00";   
         let duracionGlobal = 60; 
-        let precioGlobal = "15000";
+        
+        let precioF7 = "15000";
+        let precioF9 = "20000";
+        let precioF11 = "25000";
         
         let cantF7 = 3; let cantF9 = 1; let cantF11 = 1;
         let equivF9 = 2; let equivF11 = 3;
@@ -727,7 +738,9 @@
             const c = {
                 primerTurno: document.getElementById('input-primer-turno').value,
                 ultimoTurno: document.getElementById('input-ultimo-turno').value,
-                precioTurno: document.getElementById('input-precio').value, // Guardar precio nuevo
+                precioF7: document.getElementById('input-precio-f7').value, // Precio F7
+                precioF9: document.getElementById('input-precio-f9').value, // Precio F9
+                precioF11: document.getElementById('input-precio-f11').value, // Precio F11
                 duracionTurno: parseInt(document.getElementById('input-duracion').value),
                 canchasF7: parseInt(document.getElementById('input-canchas-f7').value)||0,
                 canchasF9: parseInt(document.getElementById('input-canchas-f9').value)||0,
@@ -774,8 +787,13 @@
                 const r = reservasGlobales.find(x => x.id === reservaSeleccionadaId);
                 if(r && r.telefono) {
                     let tel = r.telefono.replace(/[^0-9+]/g, ''); let p = r.fecha.split('-');
-                    // CAMBIO: Ahora el mensaje automático incluye el precio
-                    let msj = `Hola ${r.jugador}, confirmamos tu partido de ${r.modalidad} el ${p[2]}/${p[1]} a las ${r.hora}hs. El valor del turno es de $${precioGlobal}.`;
+                    
+                    // Lógica para asignar el precio correcto según la modalidad
+                    let precioAplicado = precioF7;
+                    if (r.modalidad === 'F9') precioAplicado = precioF9;
+                    if (r.modalidad === 'F11') precioAplicado = precioF11;
+
+                    let msj = `Hola ${r.jugador}, confirmamos tu partido de ${r.modalidad} el ${p[2]}/${p[1]} a las ${r.hora}hs. El valor del turno es de $${precioAplicado}.`;
                     window.open(`https://wa.me/${tel}?text=${encodeURIComponent(msj)}`, '_blank');
                     window.cerrarModalAcciones();
                 }
@@ -801,14 +819,22 @@
             if (docSnap.exists()) {
                 let d = docSnap.data();
                 primerTurno = d.primerTurno || "18:00"; ultimoTurno = d.ultimoTurno || "23:00"; duracionGlobal = d.duracionTurno || 60;
-                precioGlobal = d.precioTurno || "15000"; // Lectura del precio
+                
+                precioF7 = d.precioF7 || "15000"; 
+                precioF9 = d.precioF9 || "20000"; 
+                precioF11 = d.precioF11 || "25000"; 
+                
                 cantF7 = d.canchasF7 !== undefined ? d.canchasF7 : 3; cantF9 = d.canchasF9 !== undefined ? d.canchasF9 : 1; cantF11 = d.canchasF11 !== undefined ? d.canchasF11 : 1;
                 equivF9 = d.equivF9 || 2; equivF11 = d.equivF11 || 3;
                 diasAbiertosGlobal = d.diasAbiertos || [1, 2, 3, 4, 5, 6, 0];
                 
                 document.getElementById('input-primer-turno').value = primerTurno; document.getElementById('input-ultimo-turno').value = ultimoTurno;
                 document.getElementById('input-duracion').value = duracionGlobal;
-                document.getElementById('input-precio').value = precioGlobal; // Reflejar precio en UI
+                
+                document.getElementById('input-precio-f7').value = precioF7;
+                document.getElementById('input-precio-f9').value = precioF9;
+                document.getElementById('input-precio-f11').value = precioF11;
+                
                 document.getElementById('input-canchas-f7').value = cantF7; document.getElementById('input-canchas-f9').value = cantF9; document.getElementById('input-canchas-f11').value = cantF11;
                 document.getElementById('input-equiv-f9').value = equivF9; document.getElementById('input-equiv-f11').value = equivF11;
                 document.querySelectorAll('.check-dia').forEach(cb => cb.checked = diasAbiertosGlobal.includes(parseInt(cb.value)));
