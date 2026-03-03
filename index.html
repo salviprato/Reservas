@@ -78,7 +78,6 @@
             background-color: #f6a74b; color: #171d24; border-left: 5px solid #d97706; transition: 0.1s;
         }
         .tarjeta-reserva-grilla:hover { filter: brightness(1.1); z-index: 50 !important;}
-        .tarjeta-reserva-grilla.asistio { background-color: #3b82f6; color: #ffffff; border-left: 5px solid #1d4ed8; }
         .tarjeta-reserva-grilla.fijo { background-color: #8b5cf6; border-left: 5px solid #6d28d9; color: white;}
         
         .celda-vacia-hover { transition: background-color 0.1s; }
@@ -101,8 +100,7 @@
         
         .btn-whatsapp { background-color: #25D366; color: #171d24; } .btn-whatsapp:hover { background-color: #1DA851; }
         .btn-guardar { background-color: #10b981; } .btn-guardar:hover { background-color: #059669; }
-        .btn-asistencia { background-color: #3b82f6; } .btn-asistencia:hover { background-color: #2563eb; }
-        .btn-fijo { background-color: #f59e0b; color: #171d24; } .btn-fijo:hover { background-color: #d97706; }
+        .btn-fijo { background-color: #8b5cf6; color: white; } .btn-fijo:hover { background-color: #7c3aed; }
         .btn-eliminar { background-color: #ef4444; } .btn-eliminar:hover { background-color: #dc2626; }
         .btn-cerrar { background-color: #4b5563; margin-top: 10px;}
 
@@ -241,10 +239,9 @@
         <div class="modal-content">
             <h3 style="margin: 0; margin-bottom: 10px;">Gestionar Partido</h3>
             <div style="display: flex; flex-direction: column; gap: 10px;">
-                <button class="btn-modal btn-asistencia" onclick="window.accionAsistencia()">✔️ Confirmar Llegada</button>
                 <button class="btn-modal btn-fijo" onclick="window.hacerTurnoFijo()">🔄 Hacer Turno Fijo</button>
                 <button class="btn-modal btn-whatsapp" onclick="window.enviarWhatsApp()">💬 Enviar WhatsApp</button>
-                <button class="btn-modal btn-eliminar" onclick="window.accionEliminar()">🗑️ Cancelar este Partido</button>
+                <button class="btn-modal btn-eliminar" onclick="window.accionEliminar()">🗑️ Cancelar Partido(s)</button>
                 <button class="btn-modal btn-cerrar" onclick="window.cerrarModalAcciones()">Cerrar</button>
             </div>
         </div>
@@ -400,7 +397,6 @@
                 for(let i=1; i<=cantF11; i++) {
                     let parent = `F11-${i}`;
                     let startIdx = -1;
-                    // Buscar bloques contiguos libres en la F11 del tamaño de una F9
                     for (let s=1; s <= equivF11 - equivF9 + 1; s++) {
                         let libre = true;
                         for (let j=0; j < equivF9; j++) { if (ocupadas.has(`${parent}-S${s + j}`)) libre = false; }
@@ -413,7 +409,6 @@
                     }
                 }
                 
-                // Priorizar F11s que ya están rotas si es que tenemos que adaptarlas
                 f9Adaptadas.sort((a,b) => a.libres - b.libres);
 
                 if (f9Completas.length > 0) {
@@ -484,7 +479,7 @@
                 await addDoc(collection(db, "reservas"), { 
                     fecha: fechaSeleccionada, hora: reservaEnProcesoHora, cancha: cM, modalidad: mod,
                     jugador: iN, telefono: iT, duracion: duracionGlobal, 
-                    fechaRegistro: new Date(), asistencia: false, esFijo: false 
+                    fechaRegistro: new Date(), esFijo: false 
                 });
                 window.cerrarModalReservaCliente();
             } catch (error) { 
@@ -525,13 +520,13 @@
                         let ok = true; for(let j=1; j<=equivF9; j++) { if(ocupadas.has(`F9-${i}-S${j}`)) ok=false; }
                         if (ok) libresF9Completas++;
                     }
-                    // Sumar también las F9 que se pueden armar dentro de una F11 libre
+                    
                     let libresF9enF11 = 0;
                     for(let i=1; i<=cantF11; i++) {
                         for (let s=1; s <= equivF11 - equivF9 + 1; s++) {
                             let ok = true;
                             for(let j=0; j<equivF9; j++) { if(ocupadas.has(`F11-${i}-S${s + j}`)) ok=false; }
-                            if (ok) { libresF9enF11++; break; } // Solo contamos 1 F9 máximo por cancha F11 para no sobredimensionar la vista del cliente
+                            if (ok) { libresF9enF11++; break; } 
                         }
                     }
                     let totalF9Disponibles = libresF9Completas + libresF9enF11;
@@ -565,7 +560,7 @@
             try {
                 let htmlGrilla = `<div class="contenedor-grilla">`;
                 
-                // Columna Horas Fixeada
+                // Columna Horas 
                 htmlGrilla += `<div style="width: 55px; flex-shrink: 0; border-right: 1px solid #2c3540; background: #1e252d;">`;
                 htmlGrilla += `<div style="height: 40px; border-bottom: 1px solid #2c3540; background: #242c36;"></div>`; 
                 for (let m = minActual; m < minFin; m += 30) {
@@ -575,7 +570,6 @@
                 }
                 htmlGrilla += `</div>`;
 
-                // Iterar columnas estructurales
                 columnasGrid.forEach(col => {
                     htmlGrilla += `<div style="flex: 1; min-width: 140px; border-right: 1px solid #2c3540; position: relative;">`;
                     htmlGrilla += `<div style="height: 40px; border-bottom: 1px solid #2c3540; text-align: center; line-height: 40px; font-weight: bold; background: #242c36; font-size: 0.85em; color: #d1d5db; overflow: hidden; white-space: nowrap;">${col.name}</div>`;
@@ -629,8 +623,8 @@
                         
                         let cardWidth = `calc(${spanCol * 100}% + ${spanCol - 1}px - 8px)`; 
                         
-                        let eClass = res.asistencia ? "asistio" : (res.esFijo ? "fijo" : "");
-                        let cTxt = (res.asistencia || res.esFijo) ? "white" : "#171d24";
+                        let eClass = res.esFijo ? "fijo" : "";
+                        let cTxt = res.esFijo ? "white" : "#171d24";
                         
                         htmlGrilla += `
                             <div class="tarjeta-reserva-grilla ${eClass}" onclick="window.abrirModal('${res.id}')" 
@@ -655,7 +649,10 @@
             } catch(e) { console.error("Error render turnero:", e); }
         }
 
-        // Lógica Adicional y Firebase
+        // -------------------------------------------------------------
+        // FUNCIONALIDAD DE PANELES Y GESTIÓN
+        // -------------------------------------------------------------
+
         window.cambiarVista = function(v) {
             document.getElementById('pantalla-cliente').style.display = v === 'cliente' ? 'block' : 'none';
             document.getElementById('pantalla-turnero').style.display = v === 'turnero' ? 'block' : 'none';
@@ -691,21 +688,28 @@
 
         window.hacerTurnoFijo = async function() {
             if(!reservaSeleccionadaId) return;
-            let sInput = prompt("¿Semanas extra para repetir el turno?", "4");
-            if (!sInput) return; let sem = parseInt(sInput); if (isNaN(sem) || sem <= 0) return;
             const resO = reservasGlobales.find(r => r.id === reservaSeleccionadaId); if(!resO) return;
+
+            if (resO.esFijo) { alert("Este partido ya pertenece a un turno fijo."); return; }
+
+            if (!confirm("¿Convertir en TURNO FIJO?\n\nEl sistema reservará automáticamente esta misma cancha y horario para las próximas 52 semanas.")) return;
 
             try {
                 let idG = "FIJO-" + Date.now();
                 await updateDoc(doc(db, "reservas", reservaSeleccionadaId), { esFijo: true, grupoFijoId: idG });
+                
                 let p = []; let fB = new Date(`${resO.fecha}T12:00:00`); 
-                for(let i=1; i<=sem; i++) {
+                for(let i=1; i<=52; i++) {
                     let fT = new Date(fB); fT.setDate(fT.getDate() + (i * 7));
                     let fISO = `${fT.getFullYear()}-${(fT.getMonth()+1).toString().padStart(2,'0')}-${fT.getDate().toString().padStart(2,'0')}`;
-                    p.push(addDoc(collection(db, "reservas"), { ...resO, id: undefined, fecha: fISO, fechaRegistro: new Date(), asistencia: false, esFijo: true, grupoFijoId: idG }));
+                    p.push(addDoc(collection(db, "reservas"), { 
+                        ...resO, id: undefined, fecha: fISO, fechaRegistro: new Date(), esFijo: true, grupoFijoId: idG 
+                    }));
                 }
-                await Promise.all(p); alert(`¡Turno Fijo clonado por ${sem} semanas!`); window.cerrarModalAcciones();
-            } catch (e) { alert("Error."); }
+                await Promise.all(p); 
+                alert(`¡Turno Fijo establecido exitosamente!`); 
+                window.cerrarModalAcciones();
+            } catch (e) { alert("Error al establecer fijo."); }
         }
 
         window.guardarConfiguracion = async function() {
@@ -725,8 +729,34 @@
             }
         }
 
-        window.accionAsistencia = async function() { if(reservaSeleccionadaId) { await updateDoc(doc(db, "reservas", reservaSeleccionadaId), { asistencia: true }); window.cerrarModalAcciones(); } }
-        window.accionEliminar = async function() { if(reservaSeleccionadaId && confirm("¿Borrar partido?")) { await deleteDoc(doc(db, "reservas", reservaSeleccionadaId)); window.cerrarModalAcciones(); } }
+        window.accionEliminar = async function() { 
+            if(!reservaSeleccionadaId) return;
+            const res = reservasGlobales.find(r => r.id === reservaSeleccionadaId);
+            if(!res) return;
+
+            if (res.esFijo && res.grupoFijoId) {
+                let accion = confirm("Este es un TURNO FIJO.\n\n[ACEPTAR] para eliminar TODO el turno fijo desde esta fecha en adelante.\n[CANCELAR] para eliminar SOLO el partido de esta semana.");
+                if (accion) {
+                    let futuros = reservasGlobales.filter(r => r.grupoFijoId === res.grupoFijoId && r.fecha >= res.fecha);
+                    if (confirm(`Se eliminarán permanentemente ${futuros.length} partidos. ¿Continuar?`)) {
+                        let promesas = futuros.map(f => deleteDoc(doc(db, "reservas", f.id)));
+                        await Promise.all(promesas);
+                        window.cerrarModalAcciones();
+                    }
+                } else {
+                    if (confirm("¿Borrar solo este partido específico?")) {
+                        await deleteDoc(doc(db, "reservas", reservaSeleccionadaId)); 
+                        window.cerrarModalAcciones(); 
+                    }
+                }
+            } else {
+                if(confirm("¿Cancelar este partido?")) { 
+                    await deleteDoc(doc(db, "reservas", reservaSeleccionadaId)); 
+                    window.cerrarModalAcciones(); 
+                }
+            }
+        }
+
         window.enviarWhatsApp = function() {
             if(reservaSeleccionadaId) {
                 const r = reservasGlobales.find(x => x.id === reservaSeleccionadaId);
