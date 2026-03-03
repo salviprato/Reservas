@@ -266,7 +266,6 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // Variables de Estado Global
         let fechasValidas = [];
         let fechaActual = new Date();
         for (let i = 0; i <= 7; i++) {
@@ -289,7 +288,23 @@
         let reservaEnProcesoHora = null;
         let columnasGrid = [];
 
-        // Utilidades de Tiempo
+        function construirColumnas() {
+            columnasGrid = [];
+            for(let i=1; i<=cantF7; i++) {
+                columnasGrid.push({ id: `F7-${i}`, name: `F7-${i} (Pura)`, type: 'F7', parent: `F7-${i}`, index: 0 });
+            }
+            for(let i=1; i<=cantF9; i++) {
+                for(let j=1; j<=equivF9; j++) {
+                    columnasGrid.push({ id: `F9-${i}-S${j}`, name: `F9-${i} (Mitad ${j})`, type: 'F9-Sub', parent: `F9-${i}`, index: j-1 });
+                }
+            }
+            for(let i=1; i<=cantF11; i++) {
+                for(let j=1; j<=equivF11; j++) {
+                    columnasGrid.push({ id: `F11-${i}-S${j}`, name: `F11-${i} (Sec ${j})`, type: 'F11-Sub', parent: `F11-${i}`, index: j-1 });
+                }
+            }
+        }
+
         window.aMinutos = function(horaStr) { let [h, m] = horaStr.split(':').map(Number); return (h * 60) + m; }
         window.sumarMinutos = function(horaStr, minutosAñadir) {
             let [h, m] = horaStr.split(':').map(Number); let total = (h * 60) + m + minutosAñadir;
@@ -305,31 +320,9 @@
         horariosBase.reverse();
 
         // -------------------------------------------------------------
-        // MOTOR DE EMPAQUETADO (BIN PACKING) PARA CANCHAS MODULARES
+        // MOTOR INTELIGENTE DE EMPAQUETADO (BIN PACKING)
         // -------------------------------------------------------------
 
-        // Construye la estructura virtual de columnas basada en la configuración
-        function construirColumnas() {
-            columnasGrid = [];
-            // F7 Puras
-            for(let i=1; i<=cantF7; i++) {
-                columnasGrid.push({ id: `F7-${i}`, name: `F7-${i} (Pura)`, type: 'F7', parent: `F7-${i}`, index: 0 });
-            }
-            // F9 y sus divisiones
-            for(let i=1; i<=cantF9; i++) {
-                for(let j=1; j<=equivF9; j++) {
-                    columnasGrid.push({ id: `F9-${i}-S${j}`, name: `F9-${i} (Mitad ${j})`, type: 'F9-Sub', parent: `F9-${i}`, index: j-1 });
-                }
-            }
-            // F11 y sus divisiones
-            for(let i=1; i<=cantF11; i++) {
-                for(let j=1; j<=equivF11; j++) {
-                    columnasGrid.push({ id: `F11-${i}-S${j}`, name: `F11-${i} (Sec ${j})`, type: 'F11-Sub', parent: `F11-${i}`, index: j-1 });
-                }
-            }
-        }
-
-        // Calcula qué "identificadores" de columna están ocupados en un horario específico
         function getOcupadas(resDelDia, horaStr, duracionMin) {
             let numBloques = duracionMin / 30;
             let bloquesReq = [];
@@ -345,13 +338,21 @@
                 let hayCruce = bloquesReq.some(b => rBloques.includes(b));
                 if (hayCruce) {
                     if (r.modalidad === 'F7') {
-                        // Ocupa exactamente el sector asignado (ej: F7-1, F9-1-S2, etc)
                         ocupadasIds.add(r.cancha);
                     } else if (r.modalidad === 'F9') {
-                        // Ocupa todos los sub-sectores del padre (ej: r.cancha = "F9-1")
-                        for(let j=1; j<=equivF9; j++) ocupadasIds.add(`${r.cancha}-S${j}`);
+                        if (r.cancha.includes('-S')) {
+                            let partes = r.cancha.split('-S'); let p = partes[0]; let s = parseInt(partes[1]);
+                            for(let j=0; j<equivF9; j++) ocupadasIds.add(`${p}-S${s + j}`);
+                        } else {
+                            for(let j=1; j<=equivF9; j++) ocupadasIds.add(`${r.cancha}-S${j}`);
+                        }
                     } else if (r.modalidad === 'F11') {
-                        for(let j=1; j<=equivF11; j++) ocupadasIds.add(`${r.cancha}-S${j}`);
+                        if (r.cancha.includes('-S')) {
+                            let partes = r.cancha.split('-S'); let p = partes[0]; let s = parseInt(partes[1]);
+                            for(let j=0; j<equivF11; j++) ocupadasIds.add(`${p}-S${s + j}`);
+                        } else {
+                            for(let j=1; j<=equivF11; j++) ocupadasIds.add(`${r.cancha}-S${j}`);
+                        }
                     }
                 }
             });
@@ -369,34 +370,58 @@
             const btnGuardar = document.getElementById('btn-guardar-reserva');
 
             if (mod === 'F7') {
-                // 1. Buscar F7 puras libres
                 let f7PurasLibres = columnasGrid.filter(c => c.type === 'F7' && !ocupadas.has(c.id));
-                // 2. Buscar pedazos de F9 libres
                 let subsF9Libres = columnasGrid.filter(c => c.type === 'F9-Sub' && !ocupadas.has(c.id));
-                // 3. Buscar pedazos de F11 libres
                 let subsF11Libres = columnasGrid.filter(c => c.type === 'F11-Sub' && !ocupadas.has(c.id));
                 
                 if (f7PurasLibres.length > 0) {
                     opciones = f7PurasLibres.map(c => ({ id: c.id, label: `${c.name} - (Ideal)` }));
                 } else if (subsF9Libres.length > 0) {
-                    // Ordenar: Priorizar usar la F9 que YA ESTÁ ROTA (tiene menos sectores libres) para no arruinar una entera
                     let cuentaPadres = {};
                     subsF9Libres.forEach(c => cuentaPadres[c.parent] = (cuentaPadres[c.parent] || 0) + 1);
                     subsF9Libres.sort((a, b) => cuentaPadres[a.parent] - cuentaPadres[b.parent]);
-                    opciones = subsF9Libres.map(c => ({ id: c.id, label: `${c.name} - (Adaptada)` }));
+                    opciones = subsF9Libres.map(c => ({ id: c.id, label: `${c.name} - (Adaptada en F9)` }));
                 } else if (subsF11Libres.length > 0) {
                     let cuentaPadres = {};
                     subsF11Libres.forEach(c => cuentaPadres[c.parent] = (cuentaPadres[c.parent] || 0) + 1);
                     subsF11Libres.sort((a, b) => cuentaPadres[a.parent] - cuentaPadres[b.parent]);
-                    opciones = subsF11Libres.map(c => ({ id: c.id, label: `${c.name} - (Adaptada)` }));
+                    opciones = subsF11Libres.map(c => ({ id: c.id, label: `${c.name} - (Adaptada en F11)` }));
                 }
 
             } else if (mod === 'F9') {
+                let f9Completas = [];
                 for(let i=1; i<=cantF9; i++) {
-                    let canchaEnteraLibre = true;
-                    for(let j=1; j<=equivF9; j++) { if(ocupadas.has(`F9-${i}-S${j}`)) canchaEnteraLibre = false; }
-                    if (canchaEnteraLibre) opciones.push({ id: `F9-${i}`, label: `Cancha F9-${i} (Completa)` });
+                    let libre = true;
+                    for(let j=1; j<=equivF9; j++) { if(ocupadas.has(`F9-${i}-S${j}`)) libre = false; }
+                    if(libre) f9Completas.push({ id: `F9-${i}`, label: `Cancha F9-${i} (Completa)` });
                 }
+
+                let f9Adaptadas = [];
+                for(let i=1; i<=cantF11; i++) {
+                    let parent = `F11-${i}`;
+                    let startIdx = -1;
+                    // Buscar bloques contiguos libres en la F11 del tamaño de una F9
+                    for (let s=1; s <= equivF11 - equivF9 + 1; s++) {
+                        let libre = true;
+                        for (let j=0; j < equivF9; j++) { if (ocupadas.has(`${parent}-S${s + j}`)) libre = false; }
+                        if (libre) { startIdx = s; break; } 
+                    }
+                    if (startIdx !== -1) {
+                        let libresPadre = 0;
+                        for (let s=1; s<=equivF11; s++) { if(!ocupadas.has(`${parent}-S${s}`)) libresPadre++; }
+                        f9Adaptadas.push({ id: `${parent}-S${startIdx}`, label: `Cancha F11-${i} (Adaptada a F9)`, libres: libresPadre });
+                    }
+                }
+                
+                // Priorizar F11s que ya están rotas si es que tenemos que adaptarlas
+                f9Adaptadas.sort((a,b) => a.libres - b.libres);
+
+                if (f9Completas.length > 0) {
+                    opciones = f9Completas;
+                } else {
+                    opciones = f9Adaptadas.map(a => ({ id: a.id, label: a.label }));
+                }
+
             } else if (mod === 'F11') {
                 for(let i=1; i<=cantF11; i++) {
                     let canchaEnteraLibre = true;
@@ -431,7 +456,7 @@
             let selectMod = document.getElementById('select-modalidad');
             selectMod.innerHTML = '';
             if (cantF7 > 0 || cantF9 > 0 || cantF11 > 0) selectMod.innerHTML += `<option value="F7">Fútbol 7</option>`;
-            if (cantF9 > 0) selectMod.innerHTML += `<option value="F9">Fútbol 9</option>`;
+            if (cantF9 > 0 || cantF11 > 0) selectMod.innerHTML += `<option value="F9">Fútbol 9</option>`;
             if (cantF11 > 0) selectMod.innerHTML += `<option value="F11">Fútbol 11</option>`;
             
             window.actualizarOpcionesCanchas();
@@ -500,6 +525,16 @@
                         let ok = true; for(let j=1; j<=equivF9; j++) { if(ocupadas.has(`F9-${i}-S${j}`)) ok=false; }
                         if (ok) libresF9Completas++;
                     }
+                    // Sumar también las F9 que se pueden armar dentro de una F11 libre
+                    let libresF9enF11 = 0;
+                    for(let i=1; i<=cantF11; i++) {
+                        for (let s=1; s <= equivF11 - equivF9 + 1; s++) {
+                            let ok = true;
+                            for(let j=0; j<equivF9; j++) { if(ocupadas.has(`F11-${i}-S${s + j}`)) ok=false; }
+                            if (ok) { libresF9enF11++; break; } // Solo contamos 1 F9 máximo por cancha F11 para no sobredimensionar la vista del cliente
+                        }
+                    }
+                    let totalF9Disponibles = libresF9Completas + libresF9enF11;
                     
                     let libresF11Completas = 0;
                     for(let i=1; i<=cantF11; i++) {
@@ -507,13 +542,13 @@
                         if (ok) libresF11Completas++;
                     }
 
-                    if (libresF7Total > 0 || libresF9Completas > 0 || libresF11Completas > 0) {
+                    if (libresF7Total > 0 || totalF9Disponibles > 0 || libresF11Completas > 0) {
                         const div = document.createElement('div'); div.className = 'turno-item';
                         div.onclick = () => window.abrirModalReservaCliente(hora);
                         
                         let tags = [];
                         if (libresF11Completas > 0) tags.push(`${libresF11Completas} F11`);
-                        if (libresF9Completas > 0) tags.push(`${libresF9Completas} F9`);
+                        if (totalF9Disponibles > 0) tags.push(`${totalF9Disponibles} F9`);
                         if (libresF7Total > 0) tags.push(`Total ${libresF7Total} F7`);
                         
                         div.innerHTML = `<span class="punto-verde"></span><span class="hora">${hora} hs | </span><span class="texto-disponible">Turno ${duracionGlobal/60}h</span><span class="texto-sillas-disp">${tags.join(' | ')}</span>`;
@@ -545,21 +580,22 @@
                     htmlGrilla += `<div style="flex: 1; min-width: 140px; border-right: 1px solid #2c3540; position: relative;">`;
                     htmlGrilla += `<div style="height: 40px; border-bottom: 1px solid #2c3540; text-align: center; line-height: 40px; font-weight: bold; background: #242c36; font-size: 0.85em; color: #d1d5db; overflow: hidden; white-space: nowrap;">${col.name}</div>`;
                     
-                    // Fondo clickeable para vacios
-                    let ocupadasEnEstaColumna = getOcupadas(resDelDia, primerTurno, 1440); // Simplificación gráfica
-                    
                     for (let m = minActual; m < minFin; m += 30) {
                         let hFormateada = `${(Math.floor(m / 60) % 24).toString().padStart(2,'0')}:${(m % 60).toString().padStart(2,'0')}`;
                         let border = (m % 60 === 0) ? 'border-bottom: 1px dashed rgba(255,255,255,0.05);' : 'border-bottom: 1px solid #2c3540;';
                         
-                        // Determinar si hay bloque ocupado específicamente a esta hora
                         let isOcupadoAhora = false;
                         resDelDia.forEach(r => {
                             let mI = window.aMinutos(r.hora); let mF = mI + (r.duracion || 60);
                             if (m >= mI && m < mF) {
                                 if (r.modalidad === 'F7' && r.cancha === col.id) isOcupadoAhora = true;
-                                if (r.modalidad === 'F9' && col.parent === r.cancha) isOcupadoAhora = true;
-                                if (r.modalidad === 'F11' && col.parent === r.cancha) isOcupadoAhora = true;
+                                if (r.modalidad === 'F9') {
+                                    if (r.cancha.includes('-S') && r.cancha.split('-S')[0] === col.parent) {
+                                        let startS = parseInt(r.cancha.split('-S')[1]);
+                                        if (col.index + 1 >= startS && col.index + 1 < startS + equivF9) isOcupadoAhora = true;
+                                    } else if (!r.cancha.includes('-S') && r.cancha === col.parent) isOcupadoAhora = true;
+                                }
+                                if (r.modalidad === 'F11' && r.cancha === col.parent) isOcupadoAhora = true;
                             }
                         });
 
@@ -571,10 +607,12 @@
                     }
 
                     // Renderizar Tarjetas
-                    // Solo renderizamos la tarjeta si pertenece a esta columna (F7), o si es la PRIMERA sub-columna (S1) para F9/F11
                     let resQueEmpiezanAqui = resDelDia.filter(r => {
                         if (r.modalidad === 'F7' && r.cancha === col.id) return true;
-                        if (r.modalidad === 'F9' && r.cancha === col.parent && col.index === 0) return true;
+                        if (r.modalidad === 'F9') {
+                            if (r.cancha.includes('-S') && r.cancha === col.id) return true; 
+                            if (!r.cancha.includes('-S') && r.cancha === col.parent && col.index === 0) return true; 
+                        }
                         if (r.modalidad === 'F11' && r.cancha === col.parent && col.index === 0) return true;
                         return false;
                     });
@@ -608,10 +646,10 @@
                         `;
                     });
                     
-                    htmlGrilla += `</div>`; // Fin columna
+                    htmlGrilla += `</div>`; 
                 });
 
-                htmlGrilla += `</div>`; // Fin grilla
+                htmlGrilla += `</div>`;
                 contTurnero.innerHTML = htmlGrilla;
 
             } catch(e) { console.error("Error render turnero:", e); }
@@ -731,7 +769,6 @@
             }
             construirColumnas();
             
-            // Auto-seleccionar próximo día abierto si caemos en cerrado
             let fA = new Date(fechaSeleccionada.split('-')[0], fechaSeleccionada.split('-')[1] - 1, fechaSeleccionada.split('-')[2]);
             if (!diasAbiertosGlobal.includes(fA.getDay())) {
                 let prox = fechasValidas.find(f => diasAbiertosGlobal.includes(new Date(f.split('-')[0], f.split('-')[1]-1, f.split('-')[2]).getDay()));
