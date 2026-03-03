@@ -70,12 +70,17 @@
         .contenedor-grilla {
             display: flex; overflow-x: auto; background: #1e252d; border: 1px solid #2c3540; 
             border-radius: 8px; margin-top: 15px; user-select: none;
+            font-size: 0.9em; /* Texto ligeramente más chico para la grilla compacta */
         }
         .contenedor-grilla::-webkit-scrollbar { height: 8px; }
         .contenedor-grilla::-webkit-scrollbar-thumb { background: #44505d; border-radius: 4px; }
         
         .tarjeta-reserva-grilla {
-            background-color: #f6a74b; color: #171d24; border-left: 5px solid #d97706; transition: 0.1s;
+            /* CAMBIO A VERDE ESQUEMÁTICO */
+            background-color: #10b981; /* Verde esmeralda */
+            color: #ffffff; /* Texto blanco */
+            border-left: 5px solid #059669; /* Borde verde más oscuro */
+            transition: 0.1s;
         }
         .tarjeta-reserva-grilla:hover { filter: brightness(1.1); z-index: 50 !important;}
         .tarjeta-reserva-grilla.fijo { background-color: #8b5cf6; border-left: 5px solid #6d28d9; color: white;}
@@ -146,13 +151,12 @@
                 <div>
                     <label style="font-size: 0.9em; color: #d1d5db; font-weight: bold;">Modalidad del Partido:</label>
                     <select id="select-modalidad" class="input-form" style="margin-top: 5px;" onchange="window.actualizarOpcionesCanchas()"></select>
-                    <p id="mensaje-disponibilidad" style="color: #ef4444; font-size: 0.85em; font-weight: bold; margin: 5px 0 0 0; display: none;">No hay canchas disponibles para esta modalidad.</p>
                 </div>
-                
-                <div style="display: none;">
-                    <select id="select-cancha-modal" class="input-form"></select>
+                <div>
+                    <label style="font-size: 0.9em; color: #d1d5db; font-weight: bold;">Elige tu Cancha (Auto-gestionada):</label>
+                    <select id="select-cancha-modal" class="input-form" style="margin-top: 5px;"></select>
+                    <small style="font-size: 0.75em; color: #9ca3af; margin-top: 4px; display: block;">El sistema optimiza el espacio para no romper canchas grandes si hay alternativas.</small>
                 </div>
-
                 <div>
                     <label style="font-size: 0.9em; color: #d1d5db; font-weight: bold;">Nombre del Equipo / Jugador:</label>
                     <input type="text" id="input-nombre-cliente" class="input-form" placeholder="Ej: Los Pibes FC" style="margin-top: 5px;">
@@ -242,7 +246,7 @@
             <div style="display: flex; flex-direction: column; gap: 10px;">
                 <button class="btn-modal btn-fijo" onclick="window.hacerTurnoFijo()">🔄 Hacer Turno Fijo</button>
                 <button class="btn-modal btn-whatsapp" onclick="window.enviarWhatsApp()">💬 Enviar WhatsApp</button>
-                <button class="btn-modal btn-eliminar" onclick="window.accionEliminar()">🗑️ Cancelar Partido(s)</button>
+                <button class="btn-modal btn-eliminar" onclick="window.accionEliminar()">🗑️ Cancelar este Partido</button>
                 <button class="btn-modal btn-cerrar" onclick="window.cerrarModalAcciones()">Cerrar</button>
             </div>
         </div>
@@ -317,10 +321,6 @@
         }
         horariosBase.reverse();
 
-        // -------------------------------------------------------------
-        // MOTOR INTELIGENTE DE EMPAQUETADO (BIN PACKING)
-        // -------------------------------------------------------------
-
         function getOcupadas(resDelDia, horaStr, duracionMin) {
             let numBloques = duracionMin / 30;
             let bloquesReq = [];
@@ -366,7 +366,6 @@
             let opciones = [];
             const selectCancha = document.getElementById('select-cancha-modal');
             const btnGuardar = document.getElementById('btn-guardar-reserva');
-            const msjDisp = document.getElementById('mensaje-disponibilidad');
 
             if (mod === 'F7') {
                 let f7PurasLibres = columnasGrid.filter(c => c.type === 'F7' && !ocupadas.has(c.id));
@@ -388,59 +387,28 @@
                 }
 
             } else if (mod === 'F9') {
-                let f9Completas = [];
                 for(let i=1; i<=cantF9; i++) {
-                    let libre = true;
-                    for(let j=1; j<=equivF9; j++) { if(ocupadas.has(`F9-${i}-S${j}`)) libre = false; }
-                    if(libre) f9Completas.push({ id: `F9-${i}`, label: `Cancha F9-${i}` });
+                    let canchaEnteraLibre = true;
+                    for(let j=1; j<=equivF9; j++) { if(ocupadas.has(`F9-${i}-S${j}`)) canchaEnteraLibre = false; }
+                    if (canchaEnteraLibre) opciones.push({ id: `F9-${i}`, label: `Cancha F9-${i} (Completa)` });
                 }
-
-                let f9Adaptadas = [];
-                for(let i=1; i<=cantF11; i++) {
-                    let parent = `F11-${i}`;
-                    let startIdx = -1;
-                    for (let s=1; s <= equivF11 - equivF9 + 1; s++) {
-                        let libre = true;
-                        for (let j=0; j < equivF9; j++) { if (ocupadas.has(`${parent}-S${s + j}`)) libre = false; }
-                        if (libre) { startIdx = s; break; } 
-                    }
-                    if (startIdx !== -1) {
-                        let libresPadre = 0;
-                        for (let s=1; s<=equivF11; s++) { if(!ocupadas.has(`${parent}-S${s}`)) libresPadre++; }
-                        f9Adaptadas.push({ id: `${parent}-S${startIdx}`, label: `Cancha F11-${i}`, libres: libresPadre });
-                    }
-                }
-                
-                f9Adaptadas.sort((a,b) => a.libres - b.libres);
-
-                if (f9Completas.length > 0) {
-                    opciones = f9Completas;
-                } else {
-                    opciones = f9Adaptadas.map(a => ({ id: a.id, label: a.label }));
-                }
-
             } else if (mod === 'F11') {
                 for(let i=1; i<=cantF11; i++) {
                     let canchaEnteraLibre = true;
                     for(let j=1; j<=equivF11; j++) { if(ocupadas.has(`F11-${i}-S${j}`)) canchaEnteraLibre = false; }
-                    if (canchaEnteraLibre) opciones.push({ id: `F11-${i}`, label: `Cancha F11-${i}` });
+                    if (canchaEnteraLibre) opciones.push({ id: `F11-${i}`, label: `Cancha F11-${i} (Completa)` });
                 }
             }
 
             selectCancha.innerHTML = '';
             if (opciones.length === 0) {
+                selectCancha.innerHTML = `<option value="">Sin espacio para ${mod}</option>`;
                 btnGuardar.disabled = true; btnGuardar.style.opacity = '0.5';
-                msjDisp.style.display = 'block';
             } else {
                 opciones.forEach(o => selectCancha.innerHTML += `<option value="${o.id}" style="color:black;">${o.label}</option>`);
                 btnGuardar.disabled = false; btnGuardar.style.opacity = '1';
-                msjDisp.style.display = 'none';
             }
         }
-
-        // -------------------------------------------------------------
-        // FLUJO DE INTERFAZ Y RENDERIZACIÓN
-        // -------------------------------------------------------------
 
         window.abrirModalReservaCliente = function(hora) {
             let minI = window.aMinutos(hora); let minU = window.aMinutos(ultimoTurno);
@@ -454,7 +422,7 @@
             let selectMod = document.getElementById('select-modalidad');
             selectMod.innerHTML = '';
             if (cantF7 > 0 || cantF9 > 0 || cantF11 > 0) selectMod.innerHTML += `<option value="F7">Fútbol 7</option>`;
-            if (cantF9 > 0 || cantF11 > 0) selectMod.innerHTML += `<option value="F9">Fútbol 9</option>`;
+            if (cantF9 > 0) selectMod.innerHTML += `<option value="F9">Fútbol 9</option>`;
             if (cantF11 > 0) selectMod.innerHTML += `<option value="F11">Fútbol 11</option>`;
             
             window.actualizarOpcionesCanchas();
@@ -473,7 +441,7 @@
             const mod = document.getElementById('select-modalidad').value;
 
             if (!iN) { alert("Ingresa el Nombre."); return; }
-            if (!cM) { alert("Error de asignación de cancha."); return; }
+            if (!cM) { alert("No hay cancha seleccionada válida."); return; }
             
             const btn = document.getElementById('btn-guardar-reserva');
             btn.innerText = "Guardando..."; btn.disabled = true;
@@ -524,29 +492,19 @@
                         if (ok) libresF9Completas++;
                     }
                     
-                    let libresF9enF11 = 0;
-                    for(let i=1; i<=cantF11; i++) {
-                        for (let s=1; s <= equivF11 - equivF9 + 1; s++) {
-                            let ok = true;
-                            for(let j=0; j<equivF9; j++) { if(ocupadas.has(`F11-${i}-S${s + j}`)) ok=false; }
-                            if (ok) { libresF9enF11++; break; } 
-                        }
-                    }
-                    let totalF9Disponibles = libresF9Completas + libresF9enF11;
-                    
                     let libresF11Completas = 0;
                     for(let i=1; i<=cantF11; i++) {
                         let ok = true; for(let j=1; j<=equivF11; j++) { if(ocupadas.has(`F11-${i}-S${j}`)) ok=false; }
                         if (ok) libresF11Completas++;
                     }
 
-                    if (libresF7Total > 0 || totalF9Disponibles > 0 || libresF11Completas > 0) {
+                    if (libresF7Total > 0 || libresF9Completas > 0 || libresF11Completas > 0) {
                         const div = document.createElement('div'); div.className = 'turno-item';
                         div.onclick = () => window.abrirModalReservaCliente(hora);
                         
                         let tags = [];
                         if (libresF11Completas > 0) tags.push(`${libresF11Completas} F11`);
-                        if (totalF9Disponibles > 0) tags.push(`${totalF9Disponibles} F9`);
+                        if (libresF9Completas > 0) tags.push(`${libresF9Completas} F9`);
                         if (libresF7Total > 0) tags.push(`Total ${libresF7Total} F7`);
                         
                         div.innerHTML = `<span class="punto-verde"></span><span class="hora">${hora} hs | </span><span class="texto-disponible">Turno ${duracionGlobal/60}h</span><span class="texto-sillas-disp">${tags.join(' | ')}</span>`;
@@ -564,18 +522,22 @@
                 let htmlGrilla = `<div class="contenedor-grilla">`;
                 
                 // Columna Horas 
+                // CAMBIO: Altura de celda reducida de 40px a 28px
+                const celdaH = 28; 
+
                 htmlGrilla += `<div style="width: 55px; flex-shrink: 0; border-right: 1px solid #2c3540; background: #1e252d;">`;
-                htmlGrilla += `<div style="height: 40px; border-bottom: 1px solid #2c3540; background: #242c36;"></div>`; 
+                htmlGrilla += `<div style="height: ${celdaH}px; border-bottom: 1px solid #2c3540; background: #242c36;"></div>`; 
                 for (let m = minActual; m < minFin; m += 30) {
                     let hStr = (m % 60 === 0) ? `${Math.floor(m / 60) % 24}:00` : '';
                     let border = (m % 60 === 0) ? 'border-bottom: 1px dashed rgba(255,255,255,0.05);' : 'border-bottom: 1px solid #2c3540;';
-                    htmlGrilla += `<div style="height: 40px; ${border} text-align: center; color: #9ca3af; font-size: 0.8em; padding-top: 3px; box-sizing: border-box;">${hStr}</div>`;
+                    htmlGrilla += `<div style="height: ${celdaH}px; ${border} text-align: center; color: #9ca3af; font-size: 0.8em; padding-top: 3px; box-sizing: border-box;">${hStr}</div>`;
                 }
                 htmlGrilla += `</div>`;
 
+                // Iterar columnas estructurales
                 columnasGrid.forEach(col => {
                     htmlGrilla += `<div style="flex: 1; min-width: 140px; border-right: 1px solid #2c3540; position: relative;">`;
-                    htmlGrilla += `<div style="height: 40px; border-bottom: 1px solid #2c3540; text-align: center; line-height: 40px; font-weight: bold; background: #242c36; font-size: 0.85em; color: #d1d5db; overflow: hidden; white-space: nowrap;">${col.name}</div>`;
+                    htmlGrilla += `<div style="height: ${celdaH}px; border-bottom: 1px solid #2c3540; text-align: center; line-height: ${celdaH}px; font-weight: bold; background: #242c36; font-size: 0.85em; color: #d1d5db; overflow: hidden; white-space: nowrap;">${col.name}</div>`;
                     
                     for (let m = minActual; m < minFin; m += 30) {
                         let hFormateada = `${(Math.floor(m / 60) % 24).toString().padStart(2,'0')}:${(m % 60).toString().padStart(2,'0')}`;
@@ -597,28 +559,26 @@
                         });
 
                         if (!isOcupadoAhora) {
-                            htmlGrilla += `<div class="celda-vacia-hover" style="height: 40px; ${border} box-sizing: border-box; cursor: pointer;" onclick="window.abrirModalReservaCliente('${hFormateada}')"></div>`;
+                            htmlGrilla += `<div class="celda-vacia-hover" style="height: ${celdaH}px; ${border} box-sizing: border-box; cursor: pointer;" onclick="window.abrirModalReservaCliente('${hFormateada}')"></div>`;
                         } else {
-                            htmlGrilla += `<div style="height: 40px; ${border} box-sizing: border-box;"></div>`;
+                            htmlGrilla += `<div style="height: ${celdaH}px; ${border} box-sizing: border-box;"></div>`;
                         }
                     }
 
                     // Renderizar Tarjetas
                     let resQueEmpiezanAqui = resDelDia.filter(r => {
                         if (r.modalidad === 'F7' && r.cancha === col.id) return true;
-                        if (r.modalidad === 'F9') {
-                            if (r.cancha.includes('-S') && r.cancha === col.id) return true; 
-                            if (!r.cancha.includes('-S') && r.cancha === col.parent && col.index === 0) return true; 
-                        }
+                        if (r.modalidad === 'F9' && r.cancha === col.parent && col.index === 0) return true;
                         if (r.modalidad === 'F11' && r.cancha === col.parent && col.index === 0) return true;
                         return false;
                     });
 
                     resQueEmpiezanAqui.forEach(res => {
                         let minRes = window.aMinutos(res.hora); if (minRes < minActual && minFin > 1440) minRes += 1440;
-                        let offsetTop = ((minRes - minActual) / 30) * 40 + 40; 
+                        // CAMBIO: Cálculo de offset y altura basado en nueva altura de celda celdaH
+                        let offsetTop = ((minRes - minActual) / 30) * celdaH + celdaH; 
                         let rDur = res.duracion || 60;
-                        let height = (rDur / 30) * 40; 
+                        let height = (rDur / 30) * celdaH; 
                         
                         let spanCol = 1;
                         if (res.modalidad === 'F9') spanCol = equivF9;
@@ -627,18 +587,19 @@
                         let cardWidth = `calc(${spanCol * 100}% + ${spanCol - 1}px - 8px)`; 
                         
                         let eClass = res.esFijo ? "fijo" : "";
-                        let cTxt = res.esFijo ? "white" : "#171d24";
+                        // El color base es verde esmeralda (definido en CSS), fijos violetas. Texto siempre blanco.
+                        let cTxt = "white";
                         
+                        // CAMBIO: Padding reducido para tarjetas más compactas
                         htmlGrilla += `
                             <div class="tarjeta-reserva-grilla ${eClass}" onclick="window.abrirModal('${res.id}')" 
-                                 style="position: absolute; top: ${offsetTop}px; left: 4px; width: ${cardWidth}; height: ${height - 6}px; 
-                                        padding: 8px; font-size: 0.85em; overflow: hidden; border-radius: 6px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.4); display: flex; flex-direction: column; z-index: 10;">
+                                 style="position: absolute; top: ${offsetTop}px; left: 4px; width: ${cardWidth}; height: ${height - 4}px; 
+                                        padding: 4px 8px; font-size: 0.85em; overflow: hidden; border-radius: 6px; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.4); display: flex; flex-direction: column; z-index: 10;">
                                 <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                                     <span style="font-weight: 900; font-size: 1.1em; color: ${cTxt}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${res.jugador}</span>
-                                    <span style="background: rgba(0,0,0,0.2); padding: 2px 6px; border-radius: 4px; font-weight: bold; font-size: 0.8em; color: ${cTxt};">${res.modalidad}</span>
+                                    <span style="background: rgba(0,0,0,0.2); padding: 1px 4px; border-radius: 4px; font-weight: bold; font-size: 0.8em; color: ${cTxt};">${res.modalidad}</span>
                                 </div>
-                                <span style="margin-top: 4px; color: ${cTxt}; opacity: 0.8; font-weight: 700;">${res.hora} hs ${res.esFijo ? '🔄 Fijo' : ''}</span>
-                                <span style="margin-top: auto; font-size: 0.9em; font-weight: bold; color: ${cTxt}; opacity: 0.9;">📱 ${res.telefono || 'Sin tel'}</span>
+                                <span style="margin-top: 1px; color: ${cTxt}; opacity: 0.8; font-weight: 700; font-size: 0.9em;">${res.hora} hs ${res.esFijo ? '🔄' : ''}</span>
                             </div>
                         `;
                     });
@@ -705,14 +666,10 @@
                 for(let i=1; i<=52; i++) {
                     let fT = new Date(fB); fT.setDate(fT.getDate() + (i * 7));
                     let fISO = `${fT.getFullYear()}-${(fT.getMonth()+1).toString().padStart(2,'0')}-${fT.getDate().toString().padStart(2,'0')}`;
-                    p.push(addDoc(collection(db, "reservas"), { 
-                        ...resO, id: undefined, fecha: fISO, fechaRegistro: new Date(), esFijo: true, grupoFijoId: idG 
-                    }));
+                    p.push(addDoc(collection(db, "reservas"), { ...resO, id: undefined, fecha: fISO, fechaRegistro: new Date(), esFijo: true, grupoFijoId: idG }));
                 }
-                await Promise.all(p); 
-                alert(`¡Turno Fijo establecido exitosamente!`); 
-                window.cerrarModalAcciones();
-            } catch (e) { alert("Error al establecer fijo."); }
+                await Promise.all(p); alert(`¡Turno Fijo clonado por 52 semanas!`); window.cerrarModalAcciones();
+            } catch (e) { alert("Error."); }
         }
 
         window.guardarConfiguracion = async function() {
