@@ -96,7 +96,6 @@
             display: flex; flex-direction: column; gap: 12px; border: 1px solid #44505d; text-align: center;
         }
 
-        /* Modal Ancho para Finanzas y Gestión */
         #modal-finanzas .modal-content, #modal-acciones .modal-content {
             max-width: 580px; max-height: 90vh; overflow-y: auto;
         }
@@ -432,8 +431,40 @@
                     </div>
                 </div>
 
+                <div class="seccion-acordeon">
+                    <div class="header-acordeon" onclick="window.toggleAcordeon('ac-historial')">
+                        <span>📜 Historial de Transacciones</span> <span id="flecha-ac-historial">🔽</span>
+                    </div>
+                    <div id="ac-historial" class="contenido-acordeon">
+                        <div class="scroll-interno" style="max-height: 250px; overflow-y: auto; border: 1px solid #2c3540; border-radius: 6px; padding: 5px; background: #171d24;">
+                            <table>
+                                <thead>
+                                    <tr><th>Fecha</th><th>Detalle</th><th style="text-align: right;">Monto</th></tr>
+                                </thead>
+                                <tbody id="tabla-historial"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
             </div>
             <button class="btn-modal btn-cerrar" style="margin-top: 20px;" onclick="window.cerrarModalFinanzas()">Cerrar Finanzas</button>
+        </div>
+    </div>
+
+    <div id="modal-editar-precio" class="modal-overlay" style="z-index: 1100;">
+        <div class="modal-content" style="max-width: 300px;">
+            <h3 style="margin: 0; color: #ffffff;">Editar Precio</h3>
+            <p id="lbl-editar-prod" style="color: #9ca3af; margin: 5px 0 15px 0; font-weight: bold;"></p>
+            <input type="hidden" id="editar-id-prod">
+            
+            <div style="text-align: left;">
+                <label style="font-size: 0.85em; color: #d1d5db;">Nuevo Precio de Venta ($):</label>
+                <input type="number" id="editar-precio-nuevo" class="input-form" min="0" placeholder="Ej: 1500" style="margin-top: 4px;">
+            </div>
+            
+            <button class="btn-modal btn-guardar" style="margin-top: 15px; background-color:#3b82f6;" onclick="window.confirmarEditarPrecio()">Guardar Precio</button>
+            <button class="btn-modal btn-cerrar" onclick="window.cerrarModalEditarPrecio()">Cancelar</button>
         </div>
     </div>
 
@@ -663,7 +694,6 @@
             return ocupadasIds;
         }
 
-        // Lógica unificada para calcular disponibilidad de canchas
         function calcularOpcionesCanchas(mod, ocupadas) {
             let opciones = [];
             if (mod === 'F7') {
@@ -728,7 +758,7 @@
             if (!reservaEnProcesoHora) return;
             let mod = document.getElementById('select-modalidad').value;
             let resDelDia = reservasGlobales.filter(r => r.fecha === fechaSeleccionada);
-            let ocupadas = getOcupadas(resDelDia, reservaEnProcesoHora, duracionGlobal); // Cliente usa duracionGlobal
+            let ocupadas = getOcupadas(resDelDia, reservaEnProcesoHora, duracionGlobal); 
             
             let opciones = calcularOpcionesCanchas(mod, ocupadas);
             
@@ -834,7 +864,6 @@
             document.getElementById('admin-fecha-display').innerText = `${pF[2]}/${pF[1]}/${pF[0]}`;
             document.getElementById('admin-hora-display').innerText = `${hora} hs`;
 
-            // Resetear selects
             document.getElementById('select-evento-admin').value = "Normal";
             document.getElementById('select-duracion-admin').value = duracionGlobal.toString();
 
@@ -1227,7 +1256,7 @@
             } catch(e) { alert("Error al registrar pago."); }
         }
 
-        // --- FUNCIONES MÓDULO FINANZAS ---
+        // --- FUNCIONES MÓDULO FINANZAS E INVENTARIO ---
         window.abrirModalFinanzas = function() { document.getElementById('modal-finanzas').style.display = 'flex'; }
         window.cerrarModalFinanzas = function() { document.getElementById('modal-finanzas').style.display = 'none'; }
 
@@ -1285,6 +1314,27 @@
             }
         }
 
+        // FUNCIONES EDITAR PRECIO (NUEVO)
+        window.abrirModalEditarPrecio = function(id, nombre, precioActual) {
+            document.getElementById('editar-id-prod').value = id;
+            document.getElementById('lbl-editar-prod').innerText = `Producto: ${nombre}`;
+            document.getElementById('editar-precio-nuevo').value = precioActual || '';
+            document.getElementById('modal-editar-precio').style.display = 'flex';
+        }
+        window.cerrarModalEditarPrecio = function() { document.getElementById('modal-editar-precio').style.display = 'none'; }
+
+        window.confirmarEditarPrecio = async function() {
+            const id = document.getElementById('editar-id-prod').value;
+            const nuevoPrecio = parseFloat(document.getElementById('editar-precio-nuevo').value);
+            
+            if(isNaN(nuevoPrecio) || nuevoPrecio < 0) { alert("Ingresa un precio válido."); return; }
+
+            try {
+                await updateDoc(doc(db, "inventario", id), { precio: nuevoPrecio });
+                window.cerrarModalEditarPrecio();
+            } catch(e) { alert("Error al actualizar precio."); }
+        }
+
         function renderizarInventario() {
             const tbody = document.getElementById('tabla-inventario');
             if(!tbody) return;
@@ -1299,7 +1349,8 @@
                     <td style="text-align: right;" class="text-neutral-bold">$${prod.precio}</td>
                     <td style="text-align: center;">
                         <button class="btn-modal btn-stock" onclick="window.abrirModalReposicion('${prod.id}', '${prod.nombre}', ${prod.costo || 0})" title="Reponer Stock">➕</button>
-                        <button onclick="window.eliminarInventario('${prod.id}')" style="background:none;border:none;cursor:pointer;font-size:1.1em; margin-left: 5px;">🗑️</button>
+                        <button class="btn-modal btn-stock" onclick="window.abrirModalEditarPrecio('${prod.id}', '${prod.nombre}', ${prod.precio || 0})" title="Editar Precio" style="margin-left: 5px; background-color: #3b82f6;">✏️</button>
+                        <button onclick="window.eliminarInventario('${prod.id}')" style="background:none;border:none;cursor:pointer;font-size:1.1em; margin-left: 5px;" title="Borrar Producto">🗑️</button>
                     </td></tr>`;
             });
             llenarSelectoresInventario();
@@ -1388,8 +1439,9 @@
                 let efe = parseFloat(res.pagoEfectivo) || 0;
                 let trans = parseFloat(res.pagoTransferencia) || 0;
                 if(efe > 0 || trans > 0) {
+                    let tipoE = res.tipoEvento && res.tipoEvento !== 'Normal' ? ` [${res.tipoEvento}]` : '';
                     listaCombinada.push({
-                        id: res.id, tipo: 'reserva', titulo: `Turno ${res.modalidad}: ${res.jugador} (${res.fecha})`,
+                        id: res.id, tipo: 'reserva', titulo: `Turno ${res.modalidad}: ${res.jugador}${tipoE} (${res.fecha})`,
                         efectivo: efe, transferencia: trans, fechaObj: getDateFromFirebase(res.fechaRegistro).getTime()
                     });
                 }
@@ -1415,6 +1467,76 @@
                     <td style="text-align: right;" class="text-neutral-bold">$${item.efectivo}</td>
                     <td style="text-align: right;" class="text-neutral-sub">$${item.transferencia}</td>
                     <td style="text-align: center;">${btnHtml}</td></tr>`;
+            });
+        }
+
+        // HISTORIAL DE TRANSACCIONES (NUEVO)
+        function renderizarHistorial() {
+            const tbody = document.getElementById('tabla-historial');
+            if(!tbody) return;
+            tbody.innerHTML = '';
+            
+            let historial = [];
+
+            // Añadir Gastos
+            gastosGlobal.forEach(g => {
+                let fr = getDateFromFirebase(g.fechaRegistro);
+                historial.push({
+                    fechaObj: fr,
+                    fechaStr: `${fr.getDate().toString().padStart(2,'0')}/${(fr.getMonth()+1).toString().padStart(2,'0')} ${fr.getHours().toString().padStart(2,'0')}:${fr.getMinutes().toString().padStart(2,'0')}`,
+                    detalle: g.titulo,
+                    monto: parseFloat(g.importe) || 0,
+                    tipo: 'gasto'
+                });
+            });
+
+            // Añadir Ingresos y Ventas manuales
+            ingresosGlobal.forEach(i => {
+                let fr = getDateFromFirebase(i.fechaRegistro);
+                let tot = (parseFloat(i.efectivo) || 0) + (parseFloat(i.transferencia) || 0);
+                historial.push({
+                    fechaObj: fr,
+                    fechaStr: `${fr.getDate().toString().padStart(2,'0')}/${(fr.getMonth()+1).toString().padStart(2,'0')} ${fr.getHours().toString().padStart(2,'0')}:${fr.getMinutes().toString().padStart(2,'0')}`,
+                    detalle: i.titulo,
+                    monto: tot,
+                    tipo: 'ingreso'
+                });
+            });
+
+            // Añadir Reservas Cobradas
+            reservasGlobales.forEach(r => {
+                let tot = (parseFloat(r.pagoEfectivo) || 0) + (parseFloat(r.pagoTransferencia) || 0);
+                if(tot > 0) {
+                    let fr = getDateFromFirebase(r.fechaRegistro); 
+                    let tipoE = r.tipoEvento && r.tipoEvento !== 'Normal' ? ` [${r.tipoEvento}]` : '';
+                    historial.push({
+                        fechaObj: fr,
+                        fechaStr: `${fr.getDate().toString().padStart(2,'0')}/${(fr.getMonth()+1).toString().padStart(2,'0')}`, 
+                        detalle: `Turno: ${r.jugador}${tipoE} (${r.fecha})`,
+                        monto: tot,
+                        tipo: 'ingreso'
+                    });
+                }
+            });
+
+            if(historial.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: #9ca3af; padding: 15px;">No hay transacciones aún</td></tr>';
+                return;
+            }
+
+            // Ordenar por fecha descendente
+            historial.sort((a,b) => b.fechaObj.getTime() - a.fechaObj.getTime());
+
+            historial.forEach(item => {
+                let colorMonto = item.tipo === 'ingreso' ? '#10b981' : '#ef4444';
+                let signo = item.tipo === 'ingreso' ? '+' : '-';
+                tbody.innerHTML += `
+                    <tr>
+                        <td style="color: #9ca3af; font-size: 0.85em;">${item.fechaStr}</td>
+                        <td class="text-neutral-main">${item.detalle}</td>
+                        <td style="text-align: right; color: ${colorMonto}; font-weight: bold;">${signo} $${item.monto}</td>
+                    </tr>
+                `;
             });
         }
 
@@ -1625,6 +1747,7 @@
             reservasGlobales = []; snap.forEach(d => reservasGlobales.push({ id: d.id, ...d.data() }));
             renderizarPantallas(); 
             renderizarIngresos();
+            renderizarHistorial();
             if(reservaSeleccionadaId) renderizarModalTurnoAcciones();
         });
 
@@ -1634,13 +1757,16 @@
             renderizarInventario(); if(reservaSeleccionadaId) renderizarModalTurnoAcciones(); 
         });
         onSnapshot(collection(db, "gastos"), (snapshot) => {
-            gastosGlobal = []; snapshot.forEach((doc) => gastosGlobal.push({ id: doc.id, ...doc.data() })); renderizarGastos(); 
+            gastosGlobal = []; snapshot.forEach((doc) => gastosGlobal.push({ id: doc.id, ...doc.data() })); 
+            renderizarGastos(); renderizarHistorial();
         });
         onSnapshot(collection(db, "ingresos"), (snapshot) => {
-            ingresosGlobal = []; snapshot.forEach((doc) => ingresosGlobal.push({ id: doc.id, ...doc.data() })); renderizarIngresos(); 
+            ingresosGlobal = []; snapshot.forEach((doc) => ingresosGlobal.push({ id: doc.id, ...doc.data() })); 
+            renderizarIngresos(); renderizarHistorial();
         });
         onSnapshot(collection(db, "balances"), (snapshot) => {
-            balancesGlobal = []; snapshot.forEach((doc) => balancesGlobal.push({ id: doc.id, ...doc.data() })); renderizarBalances(); 
+            balancesGlobal = []; snapshot.forEach((doc) => balancesGlobal.push({ id: doc.id, ...doc.data() })); 
+            renderizarBalances(); 
         });
 
     </script>
