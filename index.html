@@ -59,7 +59,9 @@
         .punto-verde { height: 10px; width: 10px; background-color: #10b981; border-radius: 50%; margin-right: 15px; min-width: 10px; }
         .hora { font-weight: bold; margin-right: 8px; }
         .texto-disponible { color: #d1d5db; font-size: 0.9em; }
-        .texto-sillas-disp { font-size: 0.8em; color: #10b981; margin-left: auto; font-weight: bold;}
+        
+        /* Modificado para coincidir con la clase visual de Orbit */
+        .texto-canchas-disp { font-size: 0.8em; color: #10b981; margin-left: auto; font-weight: bold;}
 
         /* Vista Turnero */
         .vista-turnero {
@@ -875,7 +877,6 @@
             }
         }
 
-        // --- VISTA ADMIN: NUEVO MODAL PERSONALIZADO ---
         window.actualizarOpcionesCanchasAdmin = function() {
             if (!reservaEnProcesoHora) return;
             let mod = document.getElementById('select-modalidad-admin').value;
@@ -1006,16 +1007,21 @@
                         if (ok) libresF11Completas++;
                     }
 
-                    if (libresF7Total > 0 || totalF9Disponibles > 0 || libresF11Completas > 0) {
+                    let canchasLibresTotal = libresF7Total + totalF9Disponibles + libresF11Completas;
+                    let hsTexto = duracionGlobal % 60 === 0 ? (duracionGlobal/60) : (duracionGlobal/60).toFixed(1);
+
+                    if (canchasLibresTotal > 0) {
                         const div = document.createElement('div'); div.className = 'turno-item';
                         div.onclick = () => window.abrirModalReservaCliente(hora);
                         
-                        let tags = [];
-                        if (libresF11Completas > 0) tags.push(`${libresF11Completas} F11`);
-                        if (totalF9Disponibles > 0) tags.push(`${totalF9Disponibles} F9`);
-                        if (libresF7Total > 0) tags.push(`Total ${libresF7Total} F7`);
+                        let textoDisp = [];
+                        if(libresF7Total > 0) textoDisp.push(`${libresF7Total} F7`);
+                        if(totalF9Disponibles > 0) textoDisp.push(`${totalF9Disponibles} F9`);
+                        if(libresF11Completas > 0) textoDisp.push(`${libresF11Completas} F11`);
                         
-                        div.innerHTML = `<span class="punto-verde"></span><span class="hora">${hora} hs | </span><span class="texto-disponible">Turno ${duracionGlobal/60}h</span><span class="texto-sillas-disp">${tags.join(' | ')}</span>`;
+                        let textoCanchas = textoDisp.join(' / ');
+                        
+                        div.innerHTML = `<span class="punto-verde"></span><span class="hora">${hora} hs | </span><span class="texto-disponible">Turno ${hsTexto} hs</span><span class="texto-canchas-disp">${textoCanchas} libres</span>`;
                         contHorarios.appendChild(div);
                     }
                 });
@@ -1838,6 +1844,7 @@
             if(reservaSeleccionadaId) renderizarModalTurnoAcciones();
         });
 
+        // Listeners Finanzas
         onSnapshot(collection(db, "inventario"), (snapshot) => {
             inventarioGlobal = []; snapshot.forEach((doc) => inventarioGlobal.push({ id: doc.id, ...doc.data() }));
             renderizarInventario(); if(reservaSeleccionadaId) renderizarModalTurnoAcciones(); 
