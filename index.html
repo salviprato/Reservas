@@ -200,6 +200,60 @@
         </div>
     </div>
 
+    <div id="modal-reserva-admin" class="modal-overlay" style="z-index: 1050;">
+        <div class="modal-content">
+            <h3 style="margin: 0; margin-bottom: 5px;">Agendar Turno (Admin)</h3>
+            <p style="margin: 0; color: #9ca3af; margin-bottom: 15px;">Fecha: <strong id="admin-fecha-display" style="color:white;"></strong> | Hora: <strong id="admin-hora-display" style="color:white;"></strong></p>
+            
+            <div style="text-align: left; display: flex; flex-direction: column; gap: 12px;">
+                <div style="display: flex; gap: 10px;">
+                    <div style="flex: 1;">
+                        <label style="font-size: 0.9em; color: #d1d5db; font-weight: bold;">Tipo de Evento:</label>
+                        <select id="select-evento-admin" class="input-form" style="margin-top: 5px;">
+                            <option value="Normal">Reserva Normal</option>
+                            <option value="Clases">Clase / Profe</option>
+                            <option value="Torneo">Torneo 🏆</option>
+                            <option value="Especial">Ocasión Especial ⭐</option>
+                        </select>
+                    </div>
+                    <div style="flex: 1;">
+                        <label style="font-size: 0.9em; color: #d1d5db; font-weight: bold;">Duración:</label>
+                        <select id="select-duracion-admin" class="input-form" style="margin-top: 5px;" onchange="window.actualizarOpcionesCanchasAdmin()">
+                            <option value="30">30 Min</option>
+                            <option value="60">60 Min (1h)</option>
+                            <option value="90">90 Min (1.5h)</option>
+                            <option value="120">120 Min (2h)</option>
+                            <option value="150">150 Min (2.5h)</option>
+                            <option value="180">180 Min (3h)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label style="font-size: 0.9em; color: #d1d5db; font-weight: bold;">Modalidad:</label>
+                    <select id="select-modalidad-admin" class="input-form" style="margin-top: 5px;" onchange="window.actualizarOpcionesCanchasAdmin()"></select>
+                    <p id="mensaje-disponibilidad-admin" style="color: #ef4444; font-size: 0.85em; font-weight: bold; margin: 5px 0 0 0; display: none;">Cancha ocupada para la duración requerida.</p>
+                </div>
+                
+                <div style="display: none;">
+                    <select id="select-cancha-admin" class="input-form"></select>
+                </div>
+
+                <div>
+                    <label style="font-size: 0.9em; color: #d1d5db; font-weight: bold;">Nombre / Título:</label>
+                    <input type="text" id="input-nombre-admin" class="input-form" placeholder="Nombre jugador o título evento" style="margin-top: 5px;">
+                </div>
+                <div>
+                    <label style="font-size: 0.9em; color: #d1d5db; font-weight: bold;">Teléfono (Opcional):</label>
+                    <input type="tel" id="input-telefono-admin" class="input-form" placeholder="Ej: 351..." style="margin-top: 5px;">
+                </div>
+            </div>
+
+            <button id="btn-guardar-reserva-admin" class="btn-modal btn-guardar" style="margin-top: 20px;" onclick="window.confirmarReservaAdmin()">Guardar Evento</button>
+            <button class="btn-modal btn-cerrar" style="margin-top: 0;" onclick="window.cerrarModalReservaAdmin()">Cancelar</button>
+        </div>
+    </div>
+
     <div id="modal-acciones" class="modal-overlay">
         <div class="modal-content scroll-interno" style="max-width: 480px;">
             <h3 style="margin: 0; border-bottom: 1px solid #44505d; padding-bottom: 10px; color: #ffffff;" id="titulo-modal-acciones">Gestión de Turno</h3>
@@ -219,7 +273,7 @@
 
             <div style="background: #242c36; padding: 15px; border-radius: 8px; border: 1px solid #2c3540; text-align: left; margin-bottom: 10px;">
                 <div style="display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.9em; color: #9ca3af;">
-                    <span>Precio Cancha:</span> <span id="res-precio-cancha" class="text-neutral-main">$0</span>
+                    <span>Precio Cancha (Proporcional):</span> <span id="res-precio-cancha" class="text-neutral-main">$0</span>
                 </div>
                 <div style="display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.9em; color: #9ca3af;">
                     <span>Total Consumos:</span> <span id="res-precio-consumos" class="text-neutral-main">$0</span>
@@ -247,7 +301,7 @@
             <div style="display: flex; flex-wrap: wrap; gap: 8px; border-top: 1px solid #44505d; padding-top: 15px;">
                 <button class="btn-modal btn-whatsapp" id="btn-whatsapp" onclick="window.enviarWhatsApp()" style="flex: 1; min-width: 45%; font-size: 0.85em; color:#171d24;">💬 WhatsApp</button>
                 <button class="btn-modal btn-fijo" id="btn-toggle-fijo" onclick="window.hacerTurnoFijo()" style="flex: 1; min-width: 45%; font-size: 0.85em;">📌 Hacer Fijo</button>
-                <button class="btn-modal btn-eliminar" onclick="window.accionEliminar()" style="flex: 1; min-width: 45%; font-size: 0.85em;">🗑️ Cancelar Partido</button>
+                <button class="btn-modal btn-eliminar" onclick="window.accionEliminar()" style="flex: 1; min-width: 45%; font-size: 0.85em;">🗑️ Cancelar Evento</button>
             </div>
             <button class="btn-modal btn-cerrar" onclick="window.cerrarModalAcciones()">Cerrar Gestión</button>
         </div>
@@ -416,7 +470,7 @@
                 </div>
                 
                 <div style="display: flex; gap: 10px; justify-content: space-between;">
-                    <div style="flex: 1;"><label style="font-size: 0.9em; color: #d1d5db;">Duración:</label>
+                    <div style="flex: 1;"><label style="font-size: 0.9em; color: #d1d5db;">Duración Standard:</label>
                         <select id="input-duracion" class="input-form" style="margin-top: 4px;">
                             <option value="60">60 Min (1h)</option>
                             <option value="90">90 Min (1.5h)</option>
@@ -582,7 +636,7 @@
             
             resDelDia.forEach(r => {
                 let rBloques = [];
-                let rDur = r.duracion || 60;
+                let rDur = r.duracion || duracionGlobal;
                 for(let b=0; b<rDur/30; b++) rBloques.push(window.sumarMinutos(r.hora, b * 30));
                 
                 let hayCruce = bloquesReq.some(b => rBloques.includes(b));
@@ -609,17 +663,9 @@
             return ocupadasIds;
         }
 
-        window.actualizarOpcionesCanchas = function() {
-            if (!reservaEnProcesoHora) return;
-            let mod = document.getElementById('select-modalidad').value;
-            let resDelDia = reservasGlobales.filter(r => r.fecha === fechaSeleccionada);
-            let ocupadas = getOcupadas(resDelDia, reservaEnProcesoHora, duracionGlobal);
-            
+        // Lógica unificada para calcular disponibilidad de canchas
+        function calcularOpcionesCanchas(mod, ocupadas) {
             let opciones = [];
-            const selectCancha = document.getElementById('select-cancha-modal');
-            const btnGuardar = document.getElementById('btn-guardar-reserva');
-            const msjDisp = document.getElementById('mensaje-disponibilidad');
-
             if (mod === 'F7') {
                 let f7PurasLibres = columnasGrid.filter(c => c.type === 'F7' && !ocupadas.has(c.id));
                 let subsF9Libres = columnasGrid.filter(c => c.type === 'F9-Sub' && !ocupadas.has(c.id));
@@ -674,6 +720,21 @@
                     if (canchaEnteraLibre) opciones.push({ id: `F11-${i}`, label: `Cancha F11-${i}` });
                 }
             }
+            return opciones;
+        }
+
+        // VISTA CLIENTES: Actualizar y abrir modal
+        window.actualizarOpcionesCanchas = function() {
+            if (!reservaEnProcesoHora) return;
+            let mod = document.getElementById('select-modalidad').value;
+            let resDelDia = reservasGlobales.filter(r => r.fecha === fechaSeleccionada);
+            let ocupadas = getOcupadas(resDelDia, reservaEnProcesoHora, duracionGlobal); // Cliente usa duracionGlobal
+            
+            let opciones = calcularOpcionesCanchas(mod, ocupadas);
+            
+            const selectCancha = document.getElementById('select-cancha-modal');
+            const btnGuardar = document.getElementById('btn-guardar-reserva');
+            const msjDisp = document.getElementById('mensaje-disponibilidad');
 
             selectCancha.innerHTML = '';
             if (opciones.length === 0) {
@@ -723,12 +784,11 @@
             btn.innerText = "Guardando..."; btn.disabled = true;
 
             try {
-                // Modificado para integrar finanzas iniciales (consumos y pagos)
                 await addDoc(collection(db, "reservas"), { 
                     fecha: fechaSeleccionada, hora: reservaEnProcesoHora, cancha: cM, modalidad: mod,
                     jugador: iN, telefono: iT, duracion: duracionGlobal, 
                     fechaRegistro: serverTimestamp(), esFijo: false,
-                    pagoEfectivo: 0, pagoTransferencia: 0, consumos: []
+                    pagoEfectivo: 0, pagoTransferencia: 0, consumos: [], tipoEvento: "Normal"
                 });
                 window.cerrarModalReservaCliente();
             } catch (error) { 
@@ -737,6 +797,92 @@
                 btn.innerText = "Confirmar Turno"; btn.disabled = false;
             }
         }
+
+
+        // --- VISTA ADMIN: NUEVO MODAL PERSONALIZADO ---
+        window.actualizarOpcionesCanchasAdmin = function() {
+            if (!reservaEnProcesoHora) return;
+            let mod = document.getElementById('select-modalidad-admin').value;
+            let duracionAdmin = parseInt(document.getElementById('select-duracion-admin').value) || duracionGlobal;
+            
+            let resDelDia = reservasGlobales.filter(r => r.fecha === fechaSeleccionada);
+            let ocupadas = getOcupadas(resDelDia, reservaEnProcesoHora, duracionAdmin);
+            
+            let opciones = calcularOpcionesCanchas(mod, ocupadas);
+            
+            const selectCancha = document.getElementById('select-cancha-admin');
+            const btnGuardar = document.getElementById('btn-guardar-reserva-admin');
+            const msjDisp = document.getElementById('mensaje-disponibilidad-admin');
+
+            selectCancha.innerHTML = '';
+            if (opciones.length === 0) {
+                btnGuardar.disabled = true; btnGuardar.style.opacity = '0.5';
+                msjDisp.style.display = 'block';
+            } else {
+                opciones.forEach(o => selectCancha.innerHTML += `<option value="${o.id}" style="color:black;">${o.label}</option>`);
+                btnGuardar.disabled = false; btnGuardar.style.opacity = '1';
+                msjDisp.style.display = 'none';
+            }
+        }
+
+        window.abrirModalReservaAdmin = function(hora) {
+            let minI = window.aMinutos(hora); let minU = window.aMinutos(ultimoTurno);
+            if (minI > minU) { alert("Supera el límite de cierre."); return; }
+
+            reservaEnProcesoHora = hora;
+            let pF = fechaSeleccionada.split('-');
+            document.getElementById('admin-fecha-display').innerText = `${pF[2]}/${pF[1]}/${pF[0]}`;
+            document.getElementById('admin-hora-display').innerText = `${hora} hs`;
+
+            // Resetear selects
+            document.getElementById('select-evento-admin').value = "Normal";
+            document.getElementById('select-duracion-admin').value = duracionGlobal.toString();
+
+            let selectMod = document.getElementById('select-modalidad-admin');
+            selectMod.innerHTML = '';
+            if (cantF7 > 0 || cantF9 > 0 || cantF11 > 0) selectMod.innerHTML += `<option value="F7">Fútbol 7</option>`;
+            if (cantF9 > 0 || cantF11 > 0) selectMod.innerHTML += `<option value="F9">Fútbol 9</option>`;
+            if (cantF11 > 0) selectMod.innerHTML += `<option value="F11">Fútbol 11</option>`;
+            
+            window.actualizarOpcionesCanchasAdmin();
+
+            document.getElementById('input-nombre-admin').value = ""; 
+            document.getElementById('input-telefono-admin').value = ""; 
+            document.getElementById('modal-reserva-admin').style.display = 'flex';
+        }
+
+        window.cerrarModalReservaAdmin = function() { reservaEnProcesoHora = null; document.getElementById('modal-reserva-admin').style.display = 'none'; }
+
+        window.confirmarReservaAdmin = async function() {
+            const iN = document.getElementById('input-nombre-admin').value;
+            const iT = document.getElementById('input-telefono-admin').value;
+            const cM = document.getElementById('select-cancha-admin').value;
+            const mod = document.getElementById('select-modalidad-admin').value;
+            const duracionAdmin = parseInt(document.getElementById('select-duracion-admin').value) || duracionGlobal;
+            const tipoEvento = document.getElementById('select-evento-admin').value;
+
+            if (!iN) { alert("Ingresa el Nombre o Título del evento."); return; }
+            if (!cM) { alert("No hay cancha seleccionada válida para este bloque de tiempo."); return; }
+            
+            const btn = document.getElementById('btn-guardar-reserva-admin');
+            btn.innerText = "Guardando..."; btn.disabled = true;
+
+            try {
+                await addDoc(collection(db, "reservas"), { 
+                    fecha: fechaSeleccionada, hora: reservaEnProcesoHora, cancha: cM, modalidad: mod,
+                    jugador: iN, telefono: iT, duracion: duracionAdmin, 
+                    fechaRegistro: serverTimestamp(), esFijo: false,
+                    pagoEfectivo: 0, pagoTransferencia: 0, consumos: [], 
+                    tipoEvento: tipoEvento, esClase: (tipoEvento === 'Clases'), profe: (tipoEvento === 'Clases' ? iN : null)
+                });
+                window.cerrarModalReservaAdmin();
+            } catch (error) { 
+                alert("Error de red."); 
+            } finally {
+                btn.innerText = "Guardar Evento"; btn.disabled = false;
+            }
+        }
+
 
         window.renderizarPantallas = function() {
             let fActualStr = fechaSeleccionada;
@@ -760,16 +906,14 @@
             const horariosFiltrados = horariosBase.filter(h => h >= primerTurno && h <= ultimoTurno);
             try {
                 horariosFiltrados.forEach(hora => {
-                    let ocupadas = getOcupadas(resDelDia, hora, duracionGlobal);
+                    let ocupadas = getOcupadas(resDelDia, hora, duracionGlobal); // Jugador normal siempre evalúa con su duración
                     
-                    let libresF7Total = columnasGrid.filter(c => !ocupadas.has(c.id)).length;
-                    
+                    let libresF7Total = columnasGrid.filter(c => c.type === 'F7' && !ocupadas.has(c.id)).length;
                     let libresF9Completas = 0;
                     for(let i=1; i<=cantF9; i++) {
                         let ok = true; for(let j=1; j<=equivF9; j++) { if(ocupadas.has(`F9-${i}-S${j}`)) ok=false; }
                         if (ok) libresF9Completas++;
                     }
-                    
                     let libresF9enF11 = 0;
                     for(let i=1; i<=cantF11; i++) {
                         for (let s=1; s <= equivF11 - equivF9 + 1; s++) {
@@ -779,7 +923,6 @@
                         }
                     }
                     let totalF9Disponibles = libresF9Completas + libresF9enF11;
-                    
                     let libresF11Completas = 0;
                     for(let i=1; i<=cantF11; i++) {
                         let ok = true; for(let j=1; j<=equivF11; j++) { if(ocupadas.has(`F11-${i}-S${j}`)) ok=false; }
@@ -829,7 +972,7 @@
                         
                         let isOcupadoAhora = false;
                         resDelDia.forEach(r => {
-                            let mI = window.aMinutos(r.hora); let mF = mI + (r.duracion || 60);
+                            let mI = window.aMinutos(r.hora); let mF = mI + (r.duracion || duracionGlobal);
                             if (m >= mI && m < mF) {
                                 if (r.modalidad === 'F7' && r.cancha === col.id) isOcupadoAhora = true;
                                 if (r.modalidad === 'F9') {
@@ -843,7 +986,7 @@
                         });
 
                         if (!isOcupadoAhora) {
-                            htmlGrilla += `<div class="celda-vacia-hover" style="height: ${celdaH}px; ${border} box-sizing: border-box; cursor: pointer;" onclick="window.abrirModalReservaCliente('${hFormateada}')"></div>`;
+                            htmlGrilla += `<div class="celda-vacia-hover" style="height: ${celdaH}px; ${border} box-sizing: border-box; cursor: pointer;" onclick="window.abrirModalReservaAdmin('${hFormateada}')"></div>`;
                         } else {
                             htmlGrilla += `<div style="height: ${celdaH}px; ${border} box-sizing: border-box;"></div>`;
                         }
@@ -864,7 +1007,7 @@
                         let minRes = window.aMinutos(res.hora); if (minRes < minActual && minFin > 1440) minRes += 1440;
                         
                         let offsetTop = ((minRes - minActual) / 30) * celdaH + celdaH; 
-                        let rDur = res.duracion || 60;
+                        let rDur = res.duracion || duracionGlobal;
                         let height = (rDur / 30) * celdaH; 
                         
                         let spanCol = 1;
@@ -877,11 +1020,19 @@
                         let cTxt = res.esFijo ? "#2e1065" : "#064e3b";
                         let bgTag = res.esFijo ? "rgba(0,0,0,0.15)" : "rgba(0,0,0,0.15)";
                         
-                        // Determinar si está pagado para mostrar tick ✅
+                        // Iconos especiales
+                        let iconEvento = "";
+                        if (res.tipoEvento === "Torneo") iconEvento = "🏆 ";
+                        else if (res.tipoEvento === "Clases") iconEvento = "🧑‍🏫 ";
+                        else if (res.tipoEvento === "Especial") iconEvento = "⭐ ";
+
+                        // Pago Proporcional Check
+                        let factorPrecio = (res.duracion || duracionGlobal) / duracionGlobal;
                         let pCancha = 0;
-                        if (res.modalidad === 'F7') pCancha = parseInt(precioF7);
-                        else if (res.modalidad === 'F9') pCancha = parseInt(precioF9);
-                        else if (res.modalidad === 'F11') pCancha = parseInt(precioF11);
+                        if (res.modalidad === 'F7') pCancha = parseInt(precioF7) * factorPrecio;
+                        else if (res.modalidad === 'F9') pCancha = parseInt(precioF9) * factorPrecio;
+                        else if (res.modalidad === 'F11') pCancha = parseInt(precioF11) * factorPrecio;
+
                         let cConsumos = (res.consumos || []).reduce((acc, curr) => acc + parseFloat(curr.precio), 0);
                         let tGen = pCancha + cConsumos;
                         let tAbonado = (parseFloat(res.pagoEfectivo) || 0) + (parseFloat(res.pagoTransferencia) || 0);
@@ -892,7 +1043,7 @@
                                  style="position: absolute; top: ${offsetTop}px; left: 4px; width: ${cardWidth}; height: ${height - 4}px; 
                                         padding: 6px 8px; font-size: 0.8em; overflow: hidden; border-radius: 6px; cursor: pointer; box-shadow: 0 3px 5px rgba(0,0,0,0.2); display: flex; flex-direction: column; justify-content: space-between; z-index: 10;">
                                 <div style="display: flex; justify-content: space-between; align-items: flex-start; line-height: 1;">
-                                    <span style="font-weight: 900; font-size: 1.15em; color: ${cTxt}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${res.jugador}</span>
+                                    <span style="font-weight: 900; font-size: 1.15em; color: ${cTxt}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${iconEvento}${res.jugador}</span>
                                     <span style="background: ${bgTag}; padding: 2px 5px; border-radius: 4px; font-weight: bold; font-size: 0.75em; color: ${cTxt};">${res.modalidad}</span>
                                 </div>
                                 <span style="color: ${cTxt}; opacity: 0.9; font-weight: 800; font-size: 0.95em; line-height: 1;">${res.hora} hs ${res.esFijo ? '🔄' : ''} ${tickPago}</span>
@@ -954,17 +1105,19 @@
             const res = reservasGlobales.find(r => r.id === reservaSeleccionadaId);
             if(!res) { window.cerrarModalAcciones(); return; }
 
-            document.getElementById('titulo-modal-acciones').innerText = `Gestión: ${res.jugador} (${res.hora}hs - ${res.modalidad})`;
+            let txtE = (res.tipoEvento && res.tipoEvento !== 'Normal') ? `[${res.tipoEvento}]` : '';
+            document.getElementById('titulo-modal-acciones').innerText = `Gestión: ${res.jugador} ${txtE} (${res.hora}hs - ${res.modalidad})`;
 
             const btnFijar = document.getElementById('btn-toggle-fijo');
             if(res.esFijo) { btnFijar.style.display = 'none'; } 
             else { btnFijar.style.display = 'block'; }
 
-            // Cálculo precio F7, F9, F11
+            // Cálculo precio F7, F9, F11 PROPORCIONAL
+            let factorPrecio = (res.duracion || duracionGlobal) / duracionGlobal;
             let pCancha = 0;
-            if (res.modalidad === 'F7') pCancha = parseInt(precioF7);
-            else if (res.modalidad === 'F9') pCancha = parseInt(precioF9);
-            else if (res.modalidad === 'F11') pCancha = parseInt(precioF11);
+            if (res.modalidad === 'F7') pCancha = parseInt(precioF7) * factorPrecio;
+            else if (res.modalidad === 'F9') pCancha = parseInt(precioF9) * factorPrecio;
+            else if (res.modalidad === 'F11') pCancha = parseInt(precioF11) * factorPrecio;
             
             let consumos = res.consumos || [];
             let totalConsumos = consumos.reduce((acc, curr) => acc + (parseFloat(curr.precio) || 0), 0);
@@ -1043,10 +1196,11 @@
             const res = reservasGlobales.find(r => r.id === reservaSeleccionadaId);
             if(!res) return;
 
+            let factorPrecio = (res.duracion || duracionGlobal) / duracionGlobal;
             let pCancha = 0;
-            if (res.modalidad === 'F7') pCancha = parseInt(precioF7);
-            else if (res.modalidad === 'F9') pCancha = parseInt(precioF9);
-            else if (res.modalidad === 'F11') pCancha = parseInt(precioF11);
+            if (res.modalidad === 'F7') pCancha = parseInt(precioF7) * factorPrecio;
+            else if (res.modalidad === 'F9') pCancha = parseInt(precioF9) * factorPrecio;
+            else if (res.modalidad === 'F11') pCancha = parseInt(precioF11) * factorPrecio;
 
             let cConsumos = (res.consumos || []).reduce((acc, c) => acc + parseFloat(c.precio), 0);
             let tGen = pCancha + cConsumos;
@@ -1339,7 +1493,7 @@
                             <h4 style="margin:0 0 10px 0; color:#3b82f6; border-bottom:1px solid #44505d; padding-bottom:8px;">📅 ${mes}</h4>
                             <div style="text-align: center; background: #171d24; padding: 10px; border-radius: 6px;">
                                 <div style="font-size: 1.8em; font-weight: bold; color: #10b981;">${m[mes].t}</div>
-                                <div style="font-size: 0.9em; color: #9ca3af;">Partidos Totales</div>
+                                <div style="font-size: 0.9em; color: #9ca3af;">Eventos Totales</div>
                             </div></div>`;
             });
             document.getElementById('contenido-metricas').innerHTML = html;
@@ -1390,7 +1544,7 @@
                     }
                 }
             } else {
-                if(confirm("¿Cancelar este partido?")) { 
+                if(confirm("¿Cancelar este partido/evento?")) { 
                     await deleteDoc(doc(db, "reservas", reservaSeleccionadaId)); 
                     window.cerrarModalAcciones(); 
                 }
@@ -1403,11 +1557,14 @@
                 if(r && r.telefono) {
                     let tel = r.telefono.replace(/[^0-9+]/g, ''); let p = r.fecha.split('-');
                     
-                    let precioAplicado = precioF7;
-                    if (r.modalidad === 'F9') precioAplicado = precioF9;
-                    if (r.modalidad === 'F11') precioAplicado = precioF11;
+                    let factorPrecio = (r.duracion || duracionGlobal) / duracionGlobal;
+                    let precioAplicado = 0;
+                    if (r.modalidad === 'F7') precioAplicado = parseInt(precioF7) * factorPrecio;
+                    if (r.modalidad === 'F9') precioAplicado = parseInt(precioF9) * factorPrecio;
+                    if (r.modalidad === 'F11') precioAplicado = parseInt(precioF11) * factorPrecio;
 
-                    let msj = `Hola ${r.jugador}, confirmamos tu partido de ${r.modalidad} el ${p[2]}/${p[1]} a las ${r.hora}hs. El valor del turno es de $${precioAplicado}.`;
+                    let txtDur = r.duracion ? ` de ${r.duracion} minutos` : '';
+                    let msj = `Hola ${r.jugador}, confirmamos tu turno${txtDur} en la modalidad ${r.modalidad} el día ${p[2]}/${p[1]} a las ${r.hora}hs. El valor de la cancha es de $${precioAplicado}.`;
                     window.open(`https://wa.me/${tel}?text=${encodeURIComponent(msj)}`, '_blank');
                     window.cerrarModalAcciones();
                 }
