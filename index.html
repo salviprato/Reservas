@@ -424,6 +424,7 @@
                             <input type="text" id="balance-titulo" class="input-form" placeholder="Nombre (Ej: Cierre Mes)" style="flex: 2;">
                             <select id="balance-periodo" class="input-form" style="flex: 2;">
                                 <option value="" disabled selected>Período...</option>
+                                <option value="1">Últimas 24hs</option>
                                 <option value="7">Última Semana</option>
                                 <option value="30">Último Mes</option>
                                 <option value="todo">Historial Completo</option>
@@ -584,7 +585,6 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
         import { getFirestore, collection, addDoc, onSnapshot, doc, setDoc, updateDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-        // MANTENEMOS TU CONFIGURACIÓN DE FIREBASE PARA FÚTBOL MODULAR
         const firebaseConfig = {
           apiKey: "AIzaSyAXRXx4WvjBvBWUXV-0LgOB1gOWmrVD7s4",
           authDomain: "reservas-5ec9d.firebaseapp.com",
@@ -619,7 +619,6 @@
         
         let diasAbiertosGlobal = [1, 2, 3, 4, 5, 6, 0]; 
         
-        // VARIABLES GLOBALES (Turnos y Finanzas)
         let reservasGlobales = [];
         let inventarioGlobal = []; 
         let gastosGlobal = []; 
@@ -666,7 +665,6 @@
             return `${h.getFullYear()}-${(h.getMonth() + 1).toString().padStart(2, '0')}-${h.getDate().toString().padStart(2, '0')}`;
         }
 
-        // Validación de Horario Pasado (Línea de Tiempo)
         function validarEsHoraPasada(horaStr) {
             if (fechaSeleccionada !== obtenerFechaHoy()) {
                 let fSel = new Date(fechaSeleccionada + 'T00:00:00');
@@ -679,7 +677,6 @@
             return mTurno <= mActuales; 
         }
 
-        // LÍNEA DE TIEMPO VISUAL EN GRILLA
         function actualizarLineaDeTiempo() {
             const linea = document.getElementById('linea-tiempo-actual');
             if(!linea) return;
@@ -803,7 +800,6 @@
             return opciones;
         }
 
-        // VISTA CLIENTES: Actualizar y abrir modal
         window.actualizarOpcionesCanchas = function() {
             if (!reservaEnProcesoHora) return;
             let mod = document.getElementById('select-modalidad').value;
@@ -878,7 +874,6 @@
                 btn.innerText = "Confirmar Turno"; btn.disabled = false;
             }
         }
-
 
         // --- VISTA ADMIN: NUEVO MODAL PERSONALIZADO ---
         window.actualizarOpcionesCanchasAdmin = function() {
@@ -964,7 +959,6 @@
             }
         }
 
-
         window.renderizarPantallas = function() {
             let fActualStr = fechaSeleccionada;
             let fSelecObj = new Date(fActualStr.split('-')[0], fActualStr.split('-')[1] - 1, fActualStr.split('-')[2]);
@@ -987,7 +981,7 @@
             const horariosFiltrados = horariosBase.filter(h => h >= primerTurno && h <= ultimoTurno);
             try {
                 horariosFiltrados.forEach(hora => {
-                    if(validarEsHoraPasada(hora)) return; // BLOQUEO DE HORARIOS PASADOS (CLIENTE)
+                    if(validarEsHoraPasada(hora)) return; 
 
                     let ocupadas = getOcupadas(resDelDia, hora, duracionGlobal); 
                     
@@ -1074,7 +1068,6 @@
                         let esPasado = validarEsHoraPasada(hFormateada);
 
                         if (!isOcupadoAhora) {
-                            // BLOQUEO VISUAL DE HORARIOS PASADOS (ADMIN)
                             if (esPasado) {
                                 htmlGrilla += `<div style="height: ${celdaH}px; ${border} box-sizing: border-box; opacity: 0.2; cursor: not-allowed; background: rgba(0,0,0,0.3);"></div>`;
                             } else {
@@ -1150,14 +1143,10 @@
 
                 htmlGrilla += `</div>`;
                 contTurnero.innerHTML = htmlGrilla;
-                actualizarLineaDeTiempo(); // Llama a la línea al dibujar la grilla
+                actualizarLineaDeTiempo();
 
             } catch(e) { console.error("Error render turnero:", e); }
         }
-
-        // -------------------------------------------------------------
-        // FUNCIONALIDAD PANELES Y GESTIÓN DE TURNOS AVANZADA
-        // -------------------------------------------------------------
 
         window.cambiarVista = function(v) {
             document.getElementById('pantalla-cliente').style.display = v === 'cliente' ? 'block' : 'none';
@@ -1182,6 +1171,45 @@
         window.abrirModalConfig = function() { document.getElementById('modal-config').style.display = 'flex'; }
         window.cerrarModalConfig = function() { document.getElementById('modal-config').style.display = 'none'; }
         
+        window.guardarConfiguracion = async function() {
+            try {
+                const primerTurno = document.getElementById('input-primer-turno').value;
+                const ultimoTurno = document.getElementById('input-ultimo-turno').value;
+                const duracionTurno = parseInt(document.getElementById('input-duracion').value);
+
+                if (!primerTurno || !ultimoTurno) {
+                    alert("⚠️ Por favor, define el horario de Apertura y Cierre.");
+                    return;
+                }
+                if (isNaN(duracionTurno)) {
+                    alert("⚠️ Por favor, selecciona una Duración Standard.");
+                    return;
+                }
+
+                const c = {
+                    primerTurno: primerTurno,
+                    ultimoTurno: ultimoTurno,
+                    precioF7: document.getElementById('input-precio-f7').value || "0",
+                    precioF9: document.getElementById('input-precio-f9').value || "0",
+                    precioF11: document.getElementById('input-precio-f11').value || "0",
+                    duracionTurno: duracionTurno,
+                    canchasF7: parseInt(document.getElementById('input-canchas-f7').value) || 0,
+                    canchasF9: parseInt(document.getElementById('input-canchas-f9').value) || 0,
+                    canchasF11: parseInt(document.getElementById('input-canchas-f11').value) || 0,
+                    equivF9: parseInt(document.getElementById('input-equiv-f9').value) || 2,
+                    equivF11: parseInt(document.getElementById('input-equiv-f11').value) || 3,
+                    diasAbiertos: Array.from(document.querySelectorAll('.check-dia:checked')).map(cb => parseInt(cb.value))
+                };
+                
+                await setDoc(doc(db, "configuracion", "turnero"), c); 
+                window.cerrarModalConfig(); 
+                alert("¡Configuración guardada exitosamente! ✅"); 
+            } catch (e) { 
+                console.error("Error en Firebase:", e);
+                alert("Hubo un error al guardar. Revisa la consola o verifica tu conexión."); 
+            }
+        }
+
         window.abrirModal = function(id) { 
             reservaSeleccionadaId = id; 
             const res = reservasGlobales.find(r => r.id === id);
@@ -1204,7 +1232,6 @@
             if(res.esFijo) { btnFijar.style.display = 'none'; } 
             else { btnFijar.style.display = 'block'; }
 
-            // Cálculo precio F7, F9, F11 PROPORCIONAL
             let factorPrecio = (res.duracion || duracionGlobal) / duracionGlobal;
             let pCancha = 0;
             if (res.modalidad === 'F7') pCancha = parseInt(precioF7) * factorPrecio;
@@ -1319,7 +1346,6 @@
             } catch(e) { alert("Error al registrar pago."); }
         }
 
-        // --- FUNCIONES MÓDULO FINANZAS E INVENTARIO ---
         window.abrirModalFinanzas = function() { document.getElementById('modal-finanzas').style.display = 'flex'; }
         window.cerrarModalFinanzas = function() { document.getElementById('modal-finanzas').style.display = 'none'; }
 
@@ -1429,7 +1455,6 @@
             }
         }
 
-        // GASTOS
         window.agregarGasto = async function() {
             const titulo = document.getElementById('gasto-titulo').value.trim();
             const desc = document.getElementById('gasto-desc').value.trim();
@@ -1455,7 +1480,6 @@
             });
         }
 
-        // INGRESOS
         window.venderProductoMostrador = async function() {
             const prodId = document.getElementById('ingreso-select-prod').value;
             const efe = parseFloat(document.getElementById('ingreso-efectivo-prod').value) || 0;
@@ -1532,7 +1556,6 @@
             });
         }
 
-        // HISTORIAL DE TRANSACCIONES (NUEVO)
         function renderizarHistorial() {
             const tbody = document.getElementById('tabla-historial');
             if(!tbody) return;
@@ -1540,7 +1563,6 @@
             
             let historial = [];
 
-            // Añadir Gastos
             gastosGlobal.forEach(g => {
                 let fr = getDateFromFirebase(g.fechaRegistro);
                 historial.push({
@@ -1552,7 +1574,6 @@
                 });
             });
 
-            // Añadir Ingresos y Ventas manuales
             ingresosGlobal.forEach(i => {
                 let fr = getDateFromFirebase(i.fechaRegistro);
                 let tot = (parseFloat(i.efectivo) || 0) + (parseFloat(i.transferencia) || 0);
@@ -1565,7 +1586,6 @@
                 });
             });
 
-            // Añadir Reservas Cobradas
             reservasGlobales.forEach(r => {
                 let tot = (parseFloat(r.pagoEfectivo) || 0) + (parseFloat(r.pagoTransferencia) || 0);
                 if(tot > 0) {
@@ -1586,7 +1606,6 @@
                 return;
             }
 
-            // Ordenar por fecha descendente
             historial.sort((a,b) => b.fechaObj.getTime() - a.fechaObj.getTime());
 
             historial.forEach(item => {
@@ -1602,7 +1621,6 @@
             });
         }
 
-        // BALANCES
         window.generarBalance = async function() {
             const titulo = document.getElementById('balance-titulo').value.trim();
             const periodoDias = document.getElementById('balance-periodo').value;
@@ -1629,7 +1647,15 @@
             });
 
             let gananciaNeta = totalIngresos - totalGastos;
-            let textoPeriodo = periodoDias === "todo" ? "Historial Completo" : `Últimos ${periodoDias} días`;
+            
+            let textoPeriodo = "";
+            if (periodoDias === "todo") {
+                textoPeriodo = "Historial Completo";
+            } else if (periodoDias === "1") {
+                textoPeriodo = "Últimas 24hs";
+            } else {
+                textoPeriodo = `Últimos ${periodoDias} días`;
+            }
 
             try {
                 await addDoc(collection(db, "balances"), {
@@ -1661,7 +1687,6 @@
             });
         }
 
-        // METRICAS
         window.abrirModalMetricas = function() { calcularMetricas(); document.getElementById('modal-metricas').style.display = 'flex'; }
         window.cerrarModalMetricas = function() { document.getElementById('modal-metricas').style.display = 'none'; }
         function calcularMetricas() {
@@ -1813,7 +1838,6 @@
             if(reservaSeleccionadaId) renderizarModalTurnoAcciones();
         });
 
-        // Listeners Finanzas
         onSnapshot(collection(db, "inventario"), (snapshot) => {
             inventarioGlobal = []; snapshot.forEach((doc) => inventarioGlobal.push({ id: doc.id, ...doc.data() }));
             renderizarInventario(); if(reservaSeleccionadaId) renderizarModalTurnoAcciones(); 
