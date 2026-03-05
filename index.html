@@ -69,7 +69,7 @@
 
         .contenedor-grilla {
             display: flex; overflow-x: auto; background: #1e252d; border: 1px solid #2c3540; 
-            border-radius: 8px; margin-top: 15px; user-select: none;
+            border-radius: 8px; margin-top: 15px; user-select: none; position: relative;
         }
         .contenedor-grilla::-webkit-scrollbar { height: 8px; }
         .contenedor-grilla::-webkit-scrollbar-thumb { background: #44505d; border-radius: 4px; }
@@ -85,6 +85,16 @@
         
         .celda-vacia-hover { transition: background-color 0.1s; }
         .celda-vacia-hover:hover { background-color: rgba(59, 130, 246, 0.15); }
+
+        /* LÍNEA DE TIEMPO ACTUAL (AZUL) */
+        #linea-tiempo-actual {
+            position: absolute; left: 55px; right: 0; height: 2px;
+            background-color: #3b82f6; z-index: 20; display: none; pointer-events: none;
+        }
+        #linea-tiempo-actual::before {
+            content: ''; position: absolute; left: -4px; top: -4px;
+            width: 10px; height: 10px; border-radius: 50%; background-color: #3b82f6;
+        }
 
         /* Modales */
         .modal-overlay {
@@ -650,6 +660,46 @@
             if (field.seconds) return new Date(field.seconds * 1000);
             return new Date(field); 
         }
+        
+        function obtenerFechaHoy() {
+            let h = new Date();
+            return `${h.getFullYear()}-${(h.getMonth() + 1).toString().padStart(2, '0')}-${h.getDate().toString().padStart(2, '0')}`;
+        }
+
+        // Validación de Horario Pasado (Línea de Tiempo)
+        function validarEsHoraPasada(horaStr) {
+            if (fechaSeleccionada !== obtenerFechaHoy()) {
+                let fSel = new Date(fechaSeleccionada + 'T00:00:00');
+                let fHoy = new Date(obtenerFechaHoy() + 'T00:00:00');
+                return fSel < fHoy; 
+            }
+            const ahora = new Date();
+            let mActuales = (ahora.getHours() * 60) + ahora.getMinutes();
+            let mTurno = window.aMinutos(horaStr);
+            return mTurno <= mActuales; 
+        }
+
+        // LÍNEA DE TIEMPO VISUAL EN GRILLA
+        function actualizarLineaDeTiempo() {
+            const linea = document.getElementById('linea-tiempo-actual');
+            if(!linea) return;
+            if (fechaSeleccionada !== obtenerFechaHoy()) { linea.style.display = 'none'; return; }
+            
+            const ahora = new Date();
+            let mActuales = (ahora.getHours() * 60) + ahora.getMinutes();
+            let minInicioGrilla = window.aMinutos(primerTurno);
+            let minFinGrilla = window.aMinutos(ultimoTurno) + duracionGlobal; 
+            if (minFinGrilla <= minInicioGrilla) minFinGrilla += 1440;
+            
+            if (mActuales < minInicioGrilla || mActuales > minFinGrilla) { linea.style.display = 'none'; return; }
+            
+            const celdaH = 30;
+            let pixelesDesdeArriba = ((mActuales - minInicioGrilla) / 30) * celdaH + celdaH; 
+            
+            linea.style.top = `${pixelesDesdeArriba}px`;
+            linea.style.display = 'block';
+        }
+        setInterval(actualizarLineaDeTiempo, 60000);
 
         const horariosBase = [];
         for (let h = 0; h <= 23; h++) { 
@@ -780,6 +830,7 @@
         window.abrirModalReservaCliente = function(hora) {
             let minI = window.aMinutos(hora); let minU = window.aMinutos(ultimoTurno);
             if (minI > minU) { alert("Supera el límite de cierre."); return; }
+            if(validarEsHoraPasada(hora)) { alert("No puedes reservar un horario que ya pasó."); return; }
 
             reservaEnProcesoHora = hora;
             let pF = fechaSeleccionada.split('-');
@@ -858,6 +909,7 @@
         window.abrirModalReservaAdmin = function(hora) {
             let minI = window.aMinutos(hora); let minU = window.aMinutos(ultimoTurno);
             if (minI > minU) { alert("Supera el límite de cierre."); return; }
+            if(validarEsHoraPasada(hora)) { alert("No puedes reservar un horario que ya pasó."); return; }
 
             reservaEnProcesoHora = hora;
             let pF = fechaSeleccionada.split('-');
@@ -935,7 +987,9 @@
             const horariosFiltrados = horariosBase.filter(h => h >= primerTurno && h <= ultimoTurno);
             try {
                 horariosFiltrados.forEach(hora => {
-                    let ocupadas = getOcupadas(resDelDia, hora, duracionGlobal); // Jugador normal siempre evalúa con su duración
+                    if(validarEsHoraPasada(hora)) return; // BLOQUEO DE HORARIOS PASADOS (CLIENTE)
+
+                    let ocupadas = getOcupadas(resDelDia, hora, duracionGlobal); 
                     
                     let libresF7Total = columnasGrid.filter(c => c.type === 'F7' && !ocupadas.has(c.id)).length;
                     let libresF9Completas = 0;
@@ -982,6 +1036,9 @@
                 let htmlGrilla = `<div class="contenedor-grilla">`;
                 const celdaH = 30; 
 
+                // LINEA DE TIEMPO
+                htmlGrilla += `<div id="linea-tiempo-actual"></div>`;
+
                 htmlGrilla += `<div style="width: 55px; flex-shrink: 0; border-right: 1px solid #2c3540; background: #1e252d;">`;
                 htmlGrilla += `<div style="height: ${celdaH}px; border-bottom: 1px solid #2c3540; background: #242c36;"></div>`; 
                 for (let m = minActual; m < minFin; m += 30) {
@@ -1014,8 +1071,15 @@
                             }
                         });
 
+                        let esPasado = validarEsHoraPasada(hFormateada);
+
                         if (!isOcupadoAhora) {
-                            htmlGrilla += `<div class="celda-vacia-hover" style="height: ${celdaH}px; ${border} box-sizing: border-box; cursor: pointer;" onclick="window.abrirModalReservaAdmin('${hFormateada}')"></div>`;
+                            // BLOQUEO VISUAL DE HORARIOS PASADOS (ADMIN)
+                            if (esPasado) {
+                                htmlGrilla += `<div style="height: ${celdaH}px; ${border} box-sizing: border-box; opacity: 0.2; cursor: not-allowed; background: rgba(0,0,0,0.3);"></div>`;
+                            } else {
+                                htmlGrilla += `<div class="celda-vacia-hover" style="height: ${celdaH}px; ${border} box-sizing: border-box; cursor: pointer;" onclick="window.abrirModalReservaAdmin('${hFormateada}')"></div>`;
+                            }
                         } else {
                             htmlGrilla += `<div style="height: ${celdaH}px; ${border} box-sizing: border-box;"></div>`;
                         }
@@ -1049,13 +1113,11 @@
                         let cTxt = res.esFijo ? "#2e1065" : "#064e3b";
                         let bgTag = res.esFijo ? "rgba(0,0,0,0.15)" : "rgba(0,0,0,0.15)";
                         
-                        // Iconos especiales
                         let iconEvento = "";
                         if (res.tipoEvento === "Torneo") iconEvento = "🏆 ";
                         else if (res.tipoEvento === "Clases") iconEvento = "🧑‍🏫 ";
                         else if (res.tipoEvento === "Especial") iconEvento = "⭐ ";
 
-                        // Pago Proporcional Check
                         let factorPrecio = (res.duracion || duracionGlobal) / duracionGlobal;
                         let pCancha = 0;
                         if (res.modalidad === 'F7') pCancha = parseInt(precioF7) * factorPrecio;
@@ -1088,10 +1150,10 @@
 
                 htmlGrilla += `</div>`;
                 contTurnero.innerHTML = htmlGrilla;
+                actualizarLineaDeTiempo(); // Llama a la línea al dibujar la grilla
 
             } catch(e) { console.error("Error render turnero:", e); }
         }
-
 
         // -------------------------------------------------------------
         // FUNCIONALIDAD PANELES Y GESTIÓN DE TURNOS AVANZADA
@@ -1102,6 +1164,7 @@
             document.getElementById('pantalla-turnero').style.display = v === 'turnero' ? 'block' : 'none';
             document.getElementById('btn-cliente').classList.toggle('activo', v === 'cliente');
             document.getElementById('btn-turnero').classList.toggle('activo', v === 'turnero');
+            if (v === 'turnero') actualizarLineaDeTiempo();
         }
 
         window.toggleAcordeon = function(id) {
@@ -1314,7 +1377,6 @@
             }
         }
 
-        // FUNCIONES EDITAR PRECIO (NUEVO)
         window.abrirModalEditarPrecio = function(id, nombre, precioActual) {
             document.getElementById('editar-id-prod').value = id;
             document.getElementById('lbl-editar-prod').innerText = `Producto: ${nombre}`;
