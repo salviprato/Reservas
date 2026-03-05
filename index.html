@@ -95,6 +95,12 @@
             background: #1e252d; padding: 25px; border-radius: 12px; width: 90%; max-width: 380px; max-height: 90vh; overflow-y: auto;
             display: flex; flex-direction: column; gap: 12px; border: 1px solid #44505d; text-align: center;
         }
+
+        /* Modal Ancho para Finanzas y Gestión */
+        #modal-finanzas .modal-content, #modal-acciones .modal-content {
+            max-width: 580px; max-height: 90vh; overflow-y: auto;
+        }
+
         .input-form {
             padding: 10px; border-radius: 6px; border: 1px solid #44505d; background-color: #171d24; 
             color: white; color-scheme: dark; font-family: inherit; width: 100%; box-sizing: border-box;
@@ -106,9 +112,31 @@
         .btn-fijo { background-color: #8b5cf6; color: white; } .btn-fijo:hover { background-color: #7c3aed; }
         .btn-eliminar { background-color: #ef4444; } .btn-eliminar:hover { background-color: #dc2626; }
         .btn-cerrar { background-color: #4b5563; margin-top: 10px;}
+        .btn-gasto { background-color: #4b5563; } .btn-gasto:hover { background-color: #374151; }
+        .btn-balance { background-color: #4b5563; color: #ffffff; } .btn-balance:hover { background-color: #374151; }
+        .btn-stock { background-color: #4b5563; padding: 4px 8px; font-size: 0.8em; } .btn-stock:hover { background-color: #374151; }
 
         .scroll-interno::-webkit-scrollbar { width: 6px; }
         .scroll-interno::-webkit-scrollbar-thumb { background: #44505d; border-radius: 4px; }
+        
+        table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
+        th { padding: 8px; text-align: left; border-bottom: 2px solid #44505d; color: #9ca3af; }
+        td { padding: 8px; border-bottom: 1px solid #2c3540; }
+
+        /* Estilos Acordeón Finanzas */
+        .seccion-acordeon { border: 1px solid #2c3540; border-radius: 8px; margin-bottom: 15px; overflow: hidden; background: #171d24;}
+        .header-acordeon { 
+            display: flex; justify-content: space-between; align-items: center; padding: 12px 15px; 
+            background: #242c36; cursor: pointer; font-weight: bold; font-size: 1.05em; user-select: none;
+            color: #d1d5db;
+        }
+        .header-acordeon:hover { background: #2c3540; }
+        .contenido-acordeon { padding: 15px; display: none; }
+        .contenido-acordeon.abierto { display: block; border-top: 1px solid #2c3540;}
+
+        .text-neutral-main { color: #ffffff; }
+        .text-neutral-sub { color: #9ca3af; }
+        .text-neutral-bold { color: #d1d5db; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -132,6 +160,7 @@
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
             <h2 style="margin: 0;">Panel de Control Modular</h2>
             <div style="display: flex; gap: 15px;">
+                <button onclick="window.abrirModalFinanzas()" style="background: none; border: none; font-size: 1.5em; cursor: pointer; color: #9ca3af; transition: 0.2s;" onmouseover="this.style.color='white'" onmouseout="this.style.color='#9ca3af'" title="Finanzas e Inventario">💰</button>
                 <button onclick="window.abrirModalMetricas()" style="background: none; border: none; font-size: 1.5em; cursor: pointer; color: #9ca3af; transition: 0.2s;" onmouseover="this.style.color='white'" onmouseout="this.style.color='#9ca3af'" title="Métricas">📊</button>
                 <button onclick="window.abrirModalConfig()" style="background: none; border: none; font-size: 1.5em; cursor: pointer; color: #9ca3af; transition: 0.2s;" onmouseover="this.style.color='white'" onmouseout="this.style.color='#9ca3af'" title="Configuración">⚙️</button>
             </div>
@@ -168,6 +197,212 @@
 
             <button id="btn-guardar-reserva" class="btn-modal btn-guardar" style="margin-top: 20px;" onclick="window.confirmarReservaCliente()">Confirmar Turno</button>
             <button class="btn-modal btn-cerrar" style="margin-top: 0;" onclick="window.cerrarModalReservaCliente()">Cancelar</button>
+        </div>
+    </div>
+
+    <div id="modal-acciones" class="modal-overlay">
+        <div class="modal-content scroll-interno" style="max-width: 480px;">
+            <h3 style="margin: 0; border-bottom: 1px solid #44505d; padding-bottom: 10px; color: #ffffff;" id="titulo-modal-acciones">Gestión de Turno</h3>
+            
+            <div class="seccion-acordeon" style="margin-top: 10px;">
+                <div class="header-acordeon" onclick="window.toggleAcordeon('ac-consumos-turno')" style="font-size: 0.95em; padding: 10px;">
+                    <span>🛒 Añadir Producto (Descuenta Stock)</span> <span id="flecha-ac-consumos-turno">🔽</span>
+                </div>
+                <div id="ac-consumos-turno" class="contenido-acordeon" style="padding: 10px;">
+                    <div style="display: flex; gap: 8px;">
+                        <select id="select-consumo-turno" class="input-form" style="flex: 1;"></select>
+                        <button class="btn-modal btn-gasto" style="width: auto; padding: 10px 15px;" onclick="window.agregarConsumoTurno()">Añadir</button>
+                    </div>
+                    <ul id="lista-consumos-turno" class="scroll-interno" style="list-style: none; padding: 0; margin: 10px 0 0 0; max-height: 120px; overflow-y: auto; font-size: 0.9em;"></ul>
+                </div>
+            </div>
+
+            <div style="background: #242c36; padding: 15px; border-radius: 8px; border: 1px solid #2c3540; text-align: left; margin-bottom: 10px;">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.9em; color: #9ca3af;">
+                    <span>Precio Cancha:</span> <span id="res-precio-cancha" class="text-neutral-main">$0</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.9em; color: #9ca3af;">
+                    <span>Total Consumos:</span> <span id="res-precio-consumos" class="text-neutral-main">$0</span>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 1.2em; color: #ffffff; margin-bottom: 15px; border-top: 1px solid #44505d; padding-top: 10px;">
+                    <span>A COBRAR:</span> <span id="res-precio-total">$0</span>
+                </div>
+
+                <label style="font-size: 0.85em; color: #d1d5db;">Monto abonado por el cliente:</label>
+                <div style="display: flex; gap: 10px; margin-top: 5px;">
+                    <div style="flex: 1;">
+                        <small style="color: #9ca3af;">En Efectivo ($)</small>
+                        <input type="number" id="pago-efectivo" class="input-form" placeholder="0" oninput="window.calcularFaltante()">
+                    </div>
+                    <div style="flex: 1;">
+                        <small style="color: #9ca3af;">En Transferencia ($)</small>
+                        <input type="number" id="pago-transferencia" class="input-form" placeholder="0" oninput="window.calcularFaltante()">
+                    </div>
+                </div>
+                <div style="text-align: right; margin-top: 8px; font-size: 0.9em; font-weight: bold; color: #d1d5db;" id="txt-faltante">Falta cobrar: $0</div>
+
+                <button class="btn-modal btn-guardar" style="margin-top: 15px;" onclick="window.cobrarTurno()">Guardar Pagos</button>
+            </div>
+
+            <div style="display: flex; flex-wrap: wrap; gap: 8px; border-top: 1px solid #44505d; padding-top: 15px;">
+                <button class="btn-modal btn-whatsapp" id="btn-whatsapp" onclick="window.enviarWhatsApp()" style="flex: 1; min-width: 45%; font-size: 0.85em; color:#171d24;">💬 WhatsApp</button>
+                <button class="btn-modal btn-fijo" id="btn-toggle-fijo" onclick="window.hacerTurnoFijo()" style="flex: 1; min-width: 45%; font-size: 0.85em;">📌 Hacer Fijo</button>
+                <button class="btn-modal btn-eliminar" onclick="window.accionEliminar()" style="flex: 1; min-width: 45%; font-size: 0.85em;">🗑️ Cancelar Partido</button>
+            </div>
+            <button class="btn-modal btn-cerrar" onclick="window.cerrarModalAcciones()">Cerrar Gestión</button>
+        </div>
+    </div>
+
+    <div id="modal-finanzas" class="modal-overlay">
+        <div class="modal-content scroll-interno"> 
+            <h3 style="margin: 0; margin-bottom: 15px; border-bottom: 1px solid #44505d; padding-bottom: 10px;">Finanzas e Inventario</h3>
+            
+            <div style="text-align: left;">
+                
+                <div class="seccion-acordeon">
+                    <div class="header-acordeon" onclick="window.toggleAcordeon('ac-inv')">
+                        <span>📦 Inventario y Stock</span> <span id="flecha-ac-inv">🔽</span>
+                    </div>
+                    <div id="ac-inv" class="contenido-acordeon">
+                        <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                            <input type="text" id="inv-nombre" class="input-form" placeholder="Producto" style="flex: 2;">
+                            <select id="inv-categoria" class="input-form" style="flex: 2;">
+                                <option value="" disabled selected>Categoría...</option>
+                                <option value="Bebidas">Bebidas</option>
+                                <option value="Comida">Comida</option>
+                                <option value="Accesorios">Accesorios</option>
+                            </select>
+                        </div>
+                        <div style="display: flex; gap: 8px; margin-bottom: 15px;">
+                            <input type="number" id="inv-stock" class="input-form" placeholder="Stock Inicial" style="flex: 1;" min="0">
+                            <input type="number" id="inv-costo" class="input-form" placeholder="Costo Unit. $" style="flex: 1;" min="0">
+                            <input type="number" id="inv-precio" class="input-form" placeholder="Precio Venta $" style="flex: 1;" min="0">
+                        </div>
+                        <button class="btn-modal btn-gasto" onclick="window.agregarInventario()" style="margin-bottom: 20px;">Añadir al Inventario</button>
+                        
+                        <div class="scroll-interno" style="max-height: 200px; overflow-y: auto; border: 1px solid #2c3540; border-radius: 6px; padding: 5px; background: #171d24;">
+                            <table>
+                                <thead><tr><th>Producto</th><th style="text-align: center;">Stock</th><th style="text-align: right;">Precio</th><th style="text-align: center;">Acciones</th></tr></thead>
+                                <tbody id="tabla-inventario"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="seccion-acordeon">
+                    <div class="header-acordeon" onclick="window.toggleAcordeon('ac-gastos')">
+                        <span>💸 Gastos Externos</span> <span id="flecha-ac-gastos">🔽</span>
+                    </div>
+                    <div id="ac-gastos" class="contenido-acordeon">
+                        <div style="display: flex; gap: 8px; margin-bottom: 10px;">
+                            <input type="text" id="gasto-titulo" class="input-form" placeholder="Título (Ej: Luz, Pelotas)" style="flex: 1;">
+                            <input type="number" id="gasto-importe" class="input-form" placeholder="Importe Gastado $" style="flex: 1;">
+                        </div>
+                        <div style="margin-bottom: 15px;">
+                            <input type="text" id="gasto-desc" class="input-form" placeholder="Descripción corta (Opcional)">
+                        </div>
+                        <button class="btn-modal btn-gasto" onclick="window.agregarGasto()" style="margin-bottom: 20px;">Registrar Gasto</button>
+                        <div class="scroll-interno" style="max-height: 150px; overflow-y: auto; border: 1px solid #2c3540; border-radius: 6px; padding: 5px; background: #171d24;">
+                            <table>
+                                <thead><tr><th>Detalle del Gasto</th><th style="text-align: right;">Importe</th><th style="text-align: center;">Borrar</th></tr></thead>
+                                <tbody id="tabla-gastos"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="seccion-acordeon">
+                    <div class="header-acordeon" onclick="window.toggleAcordeon('ac-ingresos')">
+                        <span>📈 Ingresos y Ventas</span> <span id="flecha-ac-ingresos">🔽</span>
+                    </div>
+                    <div id="ac-ingresos" class="contenido-acordeon">
+                        <p style="font-size: 0.85em; color: #9ca3af; margin-top: 0;">Pagos de turnos y ventas de mostrador.</p>
+                        
+                        <div style="border: 1px solid #2c3540; padding: 10px; border-radius: 8px; margin-bottom: 15px;">
+                            <label style="font-size: 0.85em; color: #d1d5db; font-weight: bold;">Venta Rápida (Descuenta Stock):</label>
+                            <div style="display: flex; gap: 8px; margin-top: 5px; margin-bottom: 5px;">
+                                <select id="ingreso-select-prod" class="input-form" style="flex: 2;"></select>
+                            </div>
+                            <div style="display: flex; gap: 8px;">
+                                <input type="number" id="ingreso-efectivo-prod" class="input-form" placeholder="Efectivo $" style="flex: 1;">
+                                <input type="number" id="ingreso-transferencia-prod" class="input-form" placeholder="Transf. $" style="flex: 1;">
+                            </div>
+                            <button class="btn-modal btn-gasto" onclick="window.venderProductoMostrador()" style="margin-top: 10px; padding: 8px;">Vender Producto</button>
+                        </div>
+
+                        <div style="border: 1px solid #2c3540; padding: 10px; border-radius: 8px; margin-bottom: 15px;">
+                            <label style="font-size: 0.85em; color: #d1d5db; font-weight: bold;">Ingreso Manual Libre:</label>
+                            <div style="display: flex; gap: 8px; margin-top: 5px;">
+                                <input type="text" id="ingreso-titulo" class="input-form" placeholder="Detalle..." style="flex: 2;">
+                            </div>
+                            <div style="display: flex; gap: 8px; margin-top: 5px;">
+                                <input type="number" id="ingreso-efectivo" class="input-form" placeholder="Efectivo $" style="flex: 1;">
+                                <input type="number" id="ingreso-transferencia" class="input-form" placeholder="Transf. $" style="flex: 1;">
+                            </div>
+                            <button class="btn-modal btn-gasto" onclick="window.agregarIngresoLibre()" style="margin-top: 10px; padding: 8px;">Registrar Ingreso</button>
+                        </div>
+
+                        <div class="scroll-interno" style="max-height: 150px; overflow-y: auto; border: 1px solid #2c3540; border-radius: 6px; padding: 5px; background: #171d24;">
+                            <table>
+                                <thead><tr><th>Detalle</th><th style="text-align: right;">Efectivo</th><th style="text-align: right;">Transf.</th><th style="text-align: center;">Borrar</th></tr></thead>
+                                <tbody id="tabla-ingresos"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="seccion-acordeon">
+                    <div class="header-acordeon" onclick="window.toggleAcordeon('ac-balances')">
+                        <span>📊 Balance de Ganancias</span> <span id="flecha-ac-balances">🔽</span>
+                    </div>
+                    <div id="ac-balances" class="contenido-acordeon">
+                        <p style="font-size: 0.85em; color: #9ca3af; margin-top: 0;">(Ingresos Turnos + Ventas) - (Gastos + Costo Reposición Stock).</p>
+                        <div style="display: flex; gap: 8px; margin-bottom: 15px;">
+                            <input type="text" id="balance-titulo" class="input-form" placeholder="Nombre (Ej: Cierre Mes)" style="flex: 2;">
+                            <select id="balance-periodo" class="input-form" style="flex: 2;">
+                                <option value="" disabled selected>Período...</option>
+                                <option value="7">Última Semana</option>
+                                <option value="30">Último Mes</option>
+                                <option value="todo">Historial Completo</option>
+                            </select>
+                        </div>
+                        <button class="btn-modal btn-balance" onclick="window.generarBalance()" style="margin-bottom: 20px;">Calcular y Guardar Cierre</button>
+                        <div class="scroll-interno" style="max-height: 200px; overflow-y: auto; border: 1px solid #2c3540; border-radius: 6px; padding: 5px; background: #171d24;">
+                            <table>
+                                <thead>
+                                    <tr><th>Cierre / Período</th><th style="text-align: right;">Ingresos</th><th style="text-align: right;">Gastos</th><th style="text-align: right;">Neta</th><th style="text-align: center;">Borrar</th></tr>
+                                </thead>
+                                <tbody id="tabla-balances"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            <button class="btn-modal btn-cerrar" style="margin-top: 20px;" onclick="window.cerrarModalFinanzas()">Cerrar Finanzas</button>
+        </div>
+    </div>
+
+    <div id="modal-reponer-stock" class="modal-overlay" style="z-index: 1100;">
+        <div class="modal-content" style="max-width: 300px;">
+            <h3 style="margin: 0; color: #ffffff;">Reponer Stock</h3>
+            <p id="lbl-reponer-prod" style="color: #9ca3af; margin: 5px 0 15px 0; font-weight: bold;"></p>
+            <input type="hidden" id="reponer-id-prod">
+            
+            <div style="text-align: left; display: flex; flex-direction: column; gap: 10px;">
+                <div>
+                    <label style="font-size: 0.85em; color: #d1d5db;">Cantidad Comprada:</label>
+                    <input type="number" id="reponer-cantidad" class="input-form" min="1" placeholder="Ej: 10" style="margin-top: 4px;">
+                </div>
+                <div>
+                    <label style="font-size: 0.85em; color: #d1d5db;">Costo Unitario ($):</label>
+                    <input type="number" id="reponer-costo" class="input-form" min="0" placeholder="Costo por unidad" style="margin-top: 4px;">
+                </div>
+                <p style="font-size: 0.75em; color: #9ca3af; margin: 0;">El costo total se registrará automáticamente como un Gasto Externo.</p>
+            </div>
+            
+            <button class="btn-modal btn-gasto" style="margin-top: 15px;" onclick="window.confirmarReposicionStock()">Reponer y Registrar Gasto</button>
+            <button class="btn-modal btn-cerrar" onclick="window.cerrarModalReposicion()">Cancelar</button>
         </div>
     </div>
 
@@ -250,22 +485,11 @@
         </div>
     </div>
 
-    <div id="modal-acciones" class="modal-overlay">
-        <div class="modal-content">
-            <h3 style="margin: 0; margin-bottom: 10px;">Gestionar Partido</h3>
-            <div style="display: flex; flex-direction: column; gap: 10px;">
-                <button class="btn-modal btn-fijo" onclick="window.hacerTurnoFijo()">🔄 Hacer Turno Fijo</button>
-                <button class="btn-modal btn-whatsapp" onclick="window.enviarWhatsApp()">💬 Enviar WhatsApp</button>
-                <button class="btn-modal btn-eliminar" onclick="window.accionEliminar()">🗑️ Cancelar Partido(s)</button>
-                <button class="btn-modal btn-cerrar" onclick="window.cerrarModalAcciones()">Cerrar</button>
-            </div>
-        </div>
-    </div>
-
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, onSnapshot, doc, setDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, setDoc, updateDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
+        // MANTENEMOS TU CONFIGURACIÓN DE FIREBASE PARA FÚTBOL MODULAR
         const firebaseConfig = {
           apiKey: "AIzaSyAXRXx4WvjBvBWUXV-0LgOB1gOWmrVD7s4",
           authDomain: "reservas-5ec9d.firebaseapp.com",
@@ -299,7 +523,14 @@
         let equivF9 = 2; let equivF11 = 3;
         
         let diasAbiertosGlobal = [1, 2, 3, 4, 5, 6, 0]; 
+        
+        // VARIABLES GLOBALES (Turnos y Finanzas)
         let reservasGlobales = [];
+        let inventarioGlobal = []; 
+        let gastosGlobal = []; 
+        let ingresosGlobal = []; 
+        let balancesGlobal = []; 
+        
         let reservaSeleccionadaId = null; 
         let reservaEnProcesoHora = null;
         let columnasGrid = [];
@@ -326,6 +557,13 @@
             let [h, m] = horaStr.split(':').map(Number); let total = (h * 60) + m + minutosAñadir;
             let nuevaH = Math.floor(total / 60); let nuevoM = total % 60;
             if (nuevaH >= 24) nuevaH -= 24; return `${nuevaH.toString().padStart(2, '0')}:${nuevoM.toString().padStart(2, '0')}`;
+        }
+        
+        function getDateFromFirebase(field) {
+            if (!field) return new Date();
+            if (field.toDate) return field.toDate();
+            if (field.seconds) return new Date(field.seconds * 1000);
+            return new Date(field); 
         }
 
         const horariosBase = [];
@@ -424,14 +662,10 @@
                         f9Adaptadas.push({ id: `${parent}-S${startIdx}`, label: `Cancha F11-${i}`, libres: libresPadre });
                     }
                 }
-                
                 f9Adaptadas.sort((a,b) => a.libres - b.libres);
 
-                if (f9Completas.length > 0) {
-                    opciones = f9Completas;
-                } else {
-                    opciones = f9Adaptadas.map(a => ({ id: a.id, label: a.label }));
-                }
+                if (f9Completas.length > 0) { opciones = f9Completas; } 
+                else { opciones = f9Adaptadas.map(a => ({ id: a.id, label: a.label })); }
 
             } else if (mod === 'F11') {
                 for(let i=1; i<=cantF11; i++) {
@@ -463,9 +697,9 @@
 
             let selectMod = document.getElementById('select-modalidad');
             selectMod.innerHTML = '';
-            if (cantF7 > 0 || cantF9 > 0 || cantF11 > 0) selectMod.innerHTML += `<option value="F7">Fútbol 7</option>`;
-            if (cantF9 > 0 || cantF11 > 0) selectMod.innerHTML += `<option value="F9">Fútbol 9</option>`;
-            if (cantF11 > 0) selectMod.innerHTML += `<option value="F11">Fútbol 11</option>`;
+            if (cantF7 > 0 || cantF9 > 0 || cantF11 > 0) selectMod.innerHTML += `<option value="F7">Fútbol 7 ($${precioF7})</option>`;
+            if (cantF9 > 0 || cantF11 > 0) selectMod.innerHTML += `<option value="F9">Fútbol 9 ($${precioF9})</option>`;
+            if (cantF11 > 0) selectMod.innerHTML += `<option value="F11">Fútbol 11 ($${precioF11})</option>`;
             
             window.actualizarOpcionesCanchas();
 
@@ -489,10 +723,12 @@
             btn.innerText = "Guardando..."; btn.disabled = true;
 
             try {
+                // Modificado para integrar finanzas iniciales (consumos y pagos)
                 await addDoc(collection(db, "reservas"), { 
                     fecha: fechaSeleccionada, hora: reservaEnProcesoHora, cancha: cM, modalidad: mod,
                     jugador: iN, telefono: iT, duracion: duracionGlobal, 
-                    fechaRegistro: new Date(), esFijo: false 
+                    fechaRegistro: serverTimestamp(), esFijo: false,
+                    pagoEfectivo: 0, pagoTransferencia: 0, consumos: []
                 });
                 window.cerrarModalReservaCliente();
             } catch (error) { 
@@ -572,11 +808,8 @@
 
             try {
                 let htmlGrilla = `<div class="contenedor-grilla">`;
-                
-                // ALTURA DE CELDA AJUSTADA (De 40 a 30 para hacerla más compacta)
                 const celdaH = 30; 
 
-                // Columna Horas 
                 htmlGrilla += `<div style="width: 55px; flex-shrink: 0; border-right: 1px solid #2c3540; background: #1e252d;">`;
                 htmlGrilla += `<div style="height: ${celdaH}px; border-bottom: 1px solid #2c3540; background: #242c36;"></div>`; 
                 for (let m = minActual; m < minFin; m += 30) {
@@ -630,7 +863,6 @@
                     resQueEmpiezanAqui.forEach(res => {
                         let minRes = window.aMinutos(res.hora); if (minRes < minActual && minFin > 1440) minRes += 1440;
                         
-                        // Cálculo de offset y altura según el nuevo celdaH
                         let offsetTop = ((minRes - minActual) / 30) * celdaH + celdaH; 
                         let rDur = res.duracion || 60;
                         let height = (rDur / 30) * celdaH; 
@@ -642,10 +874,19 @@
                         let cardWidth = `calc(${spanCol * 100}% + ${spanCol - 1}px - 8px)`; 
                         
                         let eClass = res.esFijo ? "fijo" : "";
-                        // Colores: Texto oscuro por defecto, morado si es fijo
                         let cTxt = res.esFijo ? "#2e1065" : "#064e3b";
                         let bgTag = res.esFijo ? "rgba(0,0,0,0.15)" : "rgba(0,0,0,0.15)";
                         
+                        // Determinar si está pagado para mostrar tick ✅
+                        let pCancha = 0;
+                        if (res.modalidad === 'F7') pCancha = parseInt(precioF7);
+                        else if (res.modalidad === 'F9') pCancha = parseInt(precioF9);
+                        else if (res.modalidad === 'F11') pCancha = parseInt(precioF11);
+                        let cConsumos = (res.consumos || []).reduce((acc, curr) => acc + parseFloat(curr.precio), 0);
+                        let tGen = pCancha + cConsumos;
+                        let tAbonado = (parseFloat(res.pagoEfectivo) || 0) + (parseFloat(res.pagoTransferencia) || 0);
+                        let tickPago = (tAbonado >= tGen && tGen > 0) ? "✅" : "⚠️";
+
                         htmlGrilla += `
                             <div class="tarjeta-reserva-grilla ${eClass}" onclick="window.abrirModal('${res.id}')" 
                                  style="position: absolute; top: ${offsetTop}px; left: 4px; width: ${cardWidth}; height: ${height - 4}px; 
@@ -654,7 +895,7 @@
                                     <span style="font-weight: 900; font-size: 1.15em; color: ${cTxt}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${res.jugador}</span>
                                     <span style="background: ${bgTag}; padding: 2px 5px; border-radius: 4px; font-weight: bold; font-size: 0.75em; color: ${cTxt};">${res.modalidad}</span>
                                 </div>
-                                <span style="color: ${cTxt}; opacity: 0.9; font-weight: 800; font-size: 0.95em; line-height: 1;">${res.hora} hs ${res.esFijo ? '🔄' : ''}</span>
+                                <span style="color: ${cTxt}; opacity: 0.9; font-weight: 800; font-size: 0.95em; line-height: 1;">${res.hora} hs ${res.esFijo ? '🔄' : ''} ${tickPago}</span>
                                 <span style="margin-top: auto; font-size: 0.9em; font-weight: 700; color: ${cTxt}; opacity: 0.85; line-height: 1; display: flex; align-items: center; gap: 4px;">
                                     <span>📱</span> ${res.telefono || 'Sin tel'}
                                 </span>
@@ -671,8 +912,9 @@
             } catch(e) { console.error("Error render turnero:", e); }
         }
 
+
         // -------------------------------------------------------------
-        // FUNCIONALIDAD DE PANELES Y GESTIÓN
+        // FUNCIONALIDAD PANELES Y GESTIÓN DE TURNOS AVANZADA
         // -------------------------------------------------------------
 
         window.cambiarVista = function(v) {
@@ -682,13 +924,408 @@
             document.getElementById('btn-turnero').classList.toggle('activo', v === 'turnero');
         }
 
+        window.toggleAcordeon = function(id) {
+            const contenido = document.getElementById(id);
+            const flecha = document.getElementById('flecha-' + id);
+            if (contenido.classList.contains('abierto')) {
+                contenido.classList.remove('abierto');
+                flecha.innerText = '🔽';
+            } else {
+                contenido.classList.add('abierto');
+                flecha.innerText = '🔼';
+            }
+        }
+
         window.abrirModalConfig = function() { document.getElementById('modal-config').style.display = 'flex'; }
         window.cerrarModalConfig = function() { document.getElementById('modal-config').style.display = 'none'; }
-        window.abrirModal = function(id) { reservaSeleccionadaId = id; document.getElementById('modal-acciones').style.display = 'flex'; }
-        window.cerrarModalAcciones = function() { document.getElementById('modal-acciones').style.display = 'none'; }
+        
+        window.abrirModal = function(id) { 
+            reservaSeleccionadaId = id; 
+            const res = reservasGlobales.find(r => r.id === id);
+            if(!res) return;
+            document.getElementById('pago-efectivo').value = res.pagoEfectivo || "";
+            document.getElementById('pago-transferencia').value = res.pagoTransferencia || "";
+            renderizarModalTurnoAcciones();
+            document.getElementById('modal-acciones').style.display = 'flex'; 
+        }
+
+        window.renderizarModalTurnoAcciones = function() {
+            if(!reservaSeleccionadaId) return;
+            const res = reservasGlobales.find(r => r.id === reservaSeleccionadaId);
+            if(!res) { window.cerrarModalAcciones(); return; }
+
+            document.getElementById('titulo-modal-acciones').innerText = `Gestión: ${res.jugador} (${res.hora}hs - ${res.modalidad})`;
+
+            const btnFijar = document.getElementById('btn-toggle-fijo');
+            if(res.esFijo) { btnFijar.style.display = 'none'; } 
+            else { btnFijar.style.display = 'block'; }
+
+            // Cálculo precio F7, F9, F11
+            let pCancha = 0;
+            if (res.modalidad === 'F7') pCancha = parseInt(precioF7);
+            else if (res.modalidad === 'F9') pCancha = parseInt(precioF9);
+            else if (res.modalidad === 'F11') pCancha = parseInt(precioF11);
+            
+            let consumos = res.consumos || [];
+            let totalConsumos = consumos.reduce((acc, curr) => acc + (parseFloat(curr.precio) || 0), 0);
+            let totalGeneral = pCancha + totalConsumos;
+
+            document.getElementById('res-precio-cancha').innerText = `$${pCancha}`;
+            document.getElementById('res-precio-consumos').innerText = `$${totalConsumos}`;
+            document.getElementById('res-precio-total').innerText = `$${totalGeneral}`;
+
+            let sel = document.getElementById('select-consumo-turno');
+            sel.innerHTML = '<option value="" disabled selected>Elegir producto...</option>';
+            inventarioGlobal.sort((a,b)=>a.nombre.localeCompare(b.nombre)).forEach(p => {
+                let stock = parseInt(p.stock) || 0;
+                if(stock > 0) sel.innerHTML += `<option value="${p.id}">${p.nombre} - $${p.precio}</option>`;
+            });
+
+            let ul = document.getElementById('lista-consumos-turno');
+            ul.innerHTML = '';
+            if(consumos.length === 0) {
+                ul.innerHTML = '<li style="color: #9ca3af; font-style: italic;">Sin consumos adicionales.</li>';
+            } else {
+                consumos.forEach((c, index) => {
+                    ul.innerHTML += `<li style="display: flex; justify-content: space-between; border-bottom: 1px solid #2c3540; padding: 5px 0;">
+                            <span class="text-neutral-main">${c.nombre}</span><span><span class="text-neutral-bold" style="margin-right: 10px;">$${c.precio}</span>
+                            <button onclick="window.eliminarConsumoTurno(${index}, '${c.prodId}')" style="background:none;border:none;cursor:pointer;font-size:1.1em;">❌</button></span></li>`;
+                });
+            }
+            window.calcularFaltante(); 
+        }
+
+        window.cerrarModalAcciones = function() { reservaSeleccionadaId = null; document.getElementById('modal-acciones').style.display = 'none'; }
+
+        window.agregarConsumoTurno = async function() {
+            if(!reservaSeleccionadaId) return;
+            const res = reservasGlobales.find(r => r.id === reservaSeleccionadaId);
+            const select = document.getElementById('select-consumo-turno');
+            const prodId = select.value;
+            if(!prodId) return;
+            
+            const producto = inventarioGlobal.find(p => p.id === prodId);
+            if(producto) {
+                let stockActual = parseInt(producto.stock) || 0;
+                if(stockActual <= 0) { alert("No hay stock disponible de este producto."); return; }
+
+                let consumosActuales = res.consumos || [];
+                consumosActuales.push({ prodId: producto.id, nombre: producto.nombre, precio: producto.precio });
+                
+                try {
+                    await updateDoc(doc(db, "reservas", reservaSeleccionadaId), { consumos: consumosActuales });
+                    await updateDoc(doc(db, "inventario", prodId), { stock: stockActual - 1 });
+                } catch(e) { alert("Error al añadir consumo."); }
+            }
+        }
+
+        window.eliminarConsumoTurno = async function(index, prodId) {
+            if(!reservaSeleccionadaId) return;
+            const res = reservasGlobales.find(r => r.id === reservaSeleccionadaId);
+            let consumosActuales = res.consumos || [];
+            
+            consumosActuales.splice(index, 1);
+            
+            try {
+                await updateDoc(doc(db, "reservas", reservaSeleccionadaId), { consumos: consumosActuales });
+                if(prodId && prodId !== 'undefined') {
+                    const producto = inventarioGlobal.find(p => p.id === prodId);
+                    if(producto) {
+                        let stockActual = parseInt(producto.stock) || 0;
+                        await updateDoc(doc(db, "inventario", prodId), { stock: stockActual + 1 });
+                    }
+                }
+            } catch(e) { alert("Error al quitar consumo."); }
+        }
+
+        window.calcularFaltante = function() {
+            if(!reservaSeleccionadaId) return;
+            const res = reservasGlobales.find(r => r.id === reservaSeleccionadaId);
+            if(!res) return;
+
+            let pCancha = 0;
+            if (res.modalidad === 'F7') pCancha = parseInt(precioF7);
+            else if (res.modalidad === 'F9') pCancha = parseInt(precioF9);
+            else if (res.modalidad === 'F11') pCancha = parseInt(precioF11);
+
+            let cConsumos = (res.consumos || []).reduce((acc, c) => acc + parseFloat(c.precio), 0);
+            let tGen = pCancha + cConsumos;
+
+            let efe = parseFloat(document.getElementById('pago-efectivo').value) || 0;
+            let trans = parseFloat(document.getElementById('pago-transferencia').value) || 0;
+
+            let faltante = tGen - (efe + trans);
+            let txt = document.getElementById('txt-faltante');
+            if(faltante <= 0 && tGen > 0) {
+                txt.innerText = `Pagado por completo ✅`; txt.style.color = "#d1d5db";
+            } else {
+                txt.innerText = `Falta cobrar: $${faltante}`; txt.style.color = "#ef4444";
+            }
+        }
+
+        window.cobrarTurno = async function() {
+            if(!reservaSeleccionadaId) return;
+            let efe = parseFloat(document.getElementById('pago-efectivo').value) || 0;
+            let trans = parseFloat(document.getElementById('pago-transferencia').value) || 0;
+            try {
+                await updateDoc(doc(db, "reservas", reservaSeleccionadaId), { pagoEfectivo: efe, pagoTransferencia: trans });
+                window.cerrarModalAcciones();
+            } catch(e) { alert("Error al registrar pago."); }
+        }
+
+        // --- FUNCIONES MÓDULO FINANZAS ---
+        window.abrirModalFinanzas = function() { document.getElementById('modal-finanzas').style.display = 'flex'; }
+        window.cerrarModalFinanzas = function() { document.getElementById('modal-finanzas').style.display = 'none'; }
+
+        window.agregarInventario = async function() {
+            const nombre = document.getElementById('inv-nombre').value.trim();
+            const categoria = document.getElementById('inv-categoria').value;
+            const precio = document.getElementById('inv-precio').value;
+            const stock = document.getElementById('inv-stock').value;
+            const costo = document.getElementById('inv-costo').value;
+
+            if(!nombre || !categoria || !precio || stock === "" || costo === "") { alert("Completa todos los campos del producto."); return; }
+            try {
+                await addDoc(collection(db, "inventario"), { 
+                    nombre: nombre, categoria: categoria, 
+                    precio: parseFloat(precio), stock: parseInt(stock), costo: parseFloat(costo) 
+                });
+                document.getElementById('inv-nombre').value = ''; document.getElementById('inv-categoria').value = ''; 
+                document.getElementById('inv-precio').value = ''; document.getElementById('inv-stock').value = ''; document.getElementById('inv-costo').value = '';
+            } catch (error) { alert("Error al guardar."); }
+        }
+        
+        window.eliminarInventario = async function(id) { if(confirm("¿Borrar este producto?")) await deleteDoc(doc(db, "inventario", id)); }
+        
+        window.abrirModalReposicion = function(id, nombre, costoAnterior) {
+            document.getElementById('reponer-id-prod').value = id;
+            document.getElementById('lbl-reponer-prod').innerText = `Reponiendo: ${nombre}`;
+            document.getElementById('reponer-cantidad').value = '';
+            document.getElementById('reponer-costo').value = costoAnterior || '';
+            document.getElementById('modal-reponer-stock').style.display = 'flex';
+        }
+        window.cerrarModalReposicion = function() { document.getElementById('modal-reponer-stock').style.display = 'none'; }
+
+        window.confirmarReposicionStock = async function() {
+            const id = document.getElementById('reponer-id-prod').value;
+            const cant = parseInt(document.getElementById('reponer-cantidad').value);
+            const costoUnitario = parseFloat(document.getElementById('reponer-costo').value);
+            const nombreProd = document.getElementById('lbl-reponer-prod').innerText.split(': ')[1];
+
+            if(isNaN(cant) || cant <= 0 || isNaN(costoUnitario) || costoUnitario < 0) { alert("Ingresa cantidad y costo válidos."); return; }
+
+            const prod = inventarioGlobal.find(p => p.id === id);
+            if(prod) {
+                let nuevoStock = (parseInt(prod.stock) || 0) + cant;
+                let gastoTotal = cant * costoUnitario;
+                try {
+                    await updateDoc(doc(db, "inventario", id), { stock: nuevoStock, costo: costoUnitario });
+                    if(gastoTotal > 0) {
+                        await addDoc(collection(db, "gastos"), { 
+                            titulo: `Reposición Stock: ${nombreProd}`, descripcion: `${cant} unidades a $${costoUnitario} c/u`, 
+                            importe: gastoTotal, fechaRegistro: serverTimestamp() 
+                        });
+                    }
+                    window.cerrarModalReposicion();
+                } catch(e) { alert("Error al reponer stock."); }
+            }
+        }
+
+        function renderizarInventario() {
+            const tbody = document.getElementById('tabla-inventario');
+            if(!tbody) return;
+            tbody.innerHTML = '';
+            if(inventarioGlobal.length === 0) { tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #9ca3af; padding: 15px;">No hay productos</td></tr>'; return; }
+            
+            inventarioGlobal.sort((a, b) => a.nombre.localeCompare(b.nombre)).forEach(prod => {
+                let stockVal = parseInt(prod.stock) || 0;
+                tbody.innerHTML += `<tr>
+                    <td><strong class="text-neutral-main">${prod.nombre}</strong><br><small class="text-neutral-sub">${prod.categoria}</small></td>
+                    <td style="text-align: center; color: ${stockVal <= 0 ? '#ef4444' : '#d1d5db'}; font-weight: bold;">${stockVal}</td>
+                    <td style="text-align: right;" class="text-neutral-bold">$${prod.precio}</td>
+                    <td style="text-align: center;">
+                        <button class="btn-modal btn-stock" onclick="window.abrirModalReposicion('${prod.id}', '${prod.nombre}', ${prod.costo || 0})" title="Reponer Stock">➕</button>
+                        <button onclick="window.eliminarInventario('${prod.id}')" style="background:none;border:none;cursor:pointer;font-size:1.1em; margin-left: 5px;">🗑️</button>
+                    </td></tr>`;
+            });
+            llenarSelectoresInventario();
+        }
+
+        function llenarSelectoresInventario() {
+            const selVR = document.getElementById('ingreso-select-prod');
+            if(selVR) {
+                selVR.innerHTML = '<option value="" disabled selected>Selecciona producto para vender...</option>';
+                inventarioGlobal.sort((a,b)=>a.nombre.localeCompare(b.nombre)).forEach(p => {
+                    let stock = parseInt(p.stock) || 0;
+                    if(stock > 0) selVR.innerHTML += `<option value="${p.id}">${p.nombre} ($${p.precio}) - Disp: ${stock}</option>`;
+                });
+            }
+        }
+
+        // GASTOS
+        window.agregarGasto = async function() {
+            const titulo = document.getElementById('gasto-titulo').value.trim();
+            const desc = document.getElementById('gasto-desc').value.trim();
+            const importe = document.getElementById('gasto-importe').value;
+            if(!titulo || !importe) { alert("Completa Título e Importe."); return; }
+            try {
+                await addDoc(collection(db, "gastos"), { titulo: titulo, descripcion: desc, importe: parseFloat(importe), fechaRegistro: serverTimestamp() });
+                document.getElementById('gasto-titulo').value = ''; document.getElementById('gasto-desc').value = ''; document.getElementById('gasto-importe').value = '';
+            } catch (error) { alert("Error al registrar."); }
+        }
+        window.eliminarGasto = async function(id) { if(confirm("¿Eliminar este gasto?")) await deleteDoc(doc(db, "gastos", id)); }
+        
+        function renderizarGastos() {
+            const tbody = document.getElementById('tabla-gastos');
+            if(!tbody) return;
+            tbody.innerHTML = '';
+            if(gastosGlobal.length === 0) { tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: #9ca3af; padding: 15px;">No hay gastos</td></tr>'; return; }
+            gastosGlobal.sort((a, b) => (b.fechaRegistro?.seconds || 0) - (a.fechaRegistro?.seconds || 0)).forEach(gasto => {
+                let descHtml = gasto.descripcion ? `<br><small class="text-neutral-sub" style="font-size:0.85em;">${gasto.descripcion}</small>` : '';
+                tbody.innerHTML += `<tr><td><strong class="text-neutral-main">${gasto.titulo}</strong>${descHtml}</td>
+                    <td style="text-align: right; font-weight: bold;" class="text-neutral-bold">$${gasto.importe}</td>
+                    <td style="text-align: center;"><button onclick="window.eliminarGasto('${gasto.id}')" style="background:none;border:none;cursor:pointer;font-size:1.1em;">🗑️</button></td></tr>`;
+            });
+        }
+
+        // INGRESOS
+        window.venderProductoMostrador = async function() {
+            const prodId = document.getElementById('ingreso-select-prod').value;
+            const efe = parseFloat(document.getElementById('ingreso-efectivo-prod').value) || 0;
+            const trans = parseFloat(document.getElementById('ingreso-transferencia-prod').value) || 0;
+            
+            if(!prodId) { alert("Selecciona un producto."); return; }
+            const prod = inventarioGlobal.find(p => p.id === prodId);
+            if(!prod) return;
+
+            let stockActual = parseInt(prod.stock) || 0;
+            if(stockActual <= 0) { alert("No hay stock suficiente."); return; }
+            if(efe === 0 && trans === 0) { alert("Ingresa el monto cobrado."); return; }
+
+            try {
+                await addDoc(collection(db, "ingresos"), { 
+                    titulo: `Venta: ${prod.nombre}`, efectivo: efe, transferencia: trans, fechaRegistro: serverTimestamp() 
+                });
+                await updateDoc(doc(db, "inventario", prodId), { stock: stockActual - 1 });
+                document.getElementById('ingreso-efectivo-prod').value = ''; document.getElementById('ingreso-transferencia-prod').value = '';
+                alert("Venta registrada y stock descontado.");
+            } catch(e) { alert("Error en la venta."); }
+        }
+
+        window.agregarIngresoLibre = async function() {
+            const titulo = document.getElementById('ingreso-titulo').value.trim();
+            const efe = parseFloat(document.getElementById('ingreso-efectivo').value) || 0;
+            const trans = parseFloat(document.getElementById('ingreso-transferencia').value) || 0;
+            if(!titulo || (efe === 0 && trans === 0)) { alert("Completa el detalle y al menos un monto."); return; }
+            try {
+                await addDoc(collection(db, "ingresos"), { titulo: titulo, efectivo: efe, transferencia: trans, fechaRegistro: serverTimestamp() });
+                document.getElementById('ingreso-titulo').value = ''; document.getElementById('ingreso-efectivo').value = ''; document.getElementById('ingreso-transferencia').value = '';
+            } catch (error) { alert("Error al registrar."); }
+        }
+        window.eliminarIngreso = async function(id) { if(confirm("¿Borrar este ingreso manual?")) await deleteDoc(doc(db, "ingresos", id)); }
+        
+        function renderizarIngresos() {
+            const tbody = document.getElementById('tabla-ingresos');
+            if(!tbody) return;
+            tbody.innerHTML = '';
+
+            let listaCombinada = [];
+            reservasGlobales.forEach(res => {
+                let efe = parseFloat(res.pagoEfectivo) || 0;
+                let trans = parseFloat(res.pagoTransferencia) || 0;
+                if(efe > 0 || trans > 0) {
+                    listaCombinada.push({
+                        id: res.id, tipo: 'reserva', titulo: `Turno ${res.modalidad}: ${res.jugador} (${res.fecha})`,
+                        efectivo: efe, transferencia: trans, fechaObj: getDateFromFirebase(res.fechaRegistro).getTime()
+                    });
+                }
+            });
+            ingresosGlobal.forEach(ing => {
+                listaCombinada.push({
+                    id: ing.id, tipo: 'manual', titulo: ing.titulo,
+                    efectivo: parseFloat(ing.efectivo) || 0, transferencia: parseFloat(ing.transferencia) || 0,
+                    fechaObj: getDateFromFirebase(ing.fechaRegistro).getTime()
+                });
+            });
+
+            if(listaCombinada.length === 0) { tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #9ca3af; padding: 15px;">No hay ingresos registrados</td></tr>'; return; }
+
+            listaCombinada.sort((a, b) => b.fechaObj - a.fechaObj);
+
+            listaCombinada.forEach(item => {
+                let btnHtml = item.tipo === 'manual' 
+                    ? `<button onclick="window.eliminarIngreso('${item.id}')" style="background:none;border:none;cursor:pointer;font-size:1.1em;" title="Borrar">🗑️</button>`
+                    : `<span style="color:#9ca3af; font-size:0.8em; border: 1px solid #44505d; padding: 2px 5px; border-radius: 4px;">Turno</span>`;
+                
+                tbody.innerHTML += `<tr><td><strong class="text-neutral-main">${item.titulo}</strong></td>
+                    <td style="text-align: right;" class="text-neutral-bold">$${item.efectivo}</td>
+                    <td style="text-align: right;" class="text-neutral-sub">$${item.transferencia}</td>
+                    <td style="text-align: center;">${btnHtml}</td></tr>`;
+            });
+        }
+
+        // BALANCES
+        window.generarBalance = async function() {
+            const titulo = document.getElementById('balance-titulo').value.trim();
+            const periodoDias = document.getElementById('balance-periodo').value;
+            if(!titulo || !periodoDias) { alert("Completa Nombre del Balance y Período."); return; }
+
+            let fechaLimite = new Date();
+            if (periodoDias !== "todo") {
+                fechaLimite.setDate(fechaLimite.getDate() - parseInt(periodoDias));
+            } else { fechaLimite = new Date(2000, 0, 1); }
+
+            let totalIngresos = 0; let totalGastos = 0;
+
+            reservasGlobales.forEach(res => {
+                let fr = getDateFromFirebase(res.fechaRegistro);
+                if(fr >= fechaLimite) totalIngresos += (parseFloat(res.pagoEfectivo) || 0) + (parseFloat(res.pagoTransferencia) || 0);
+            });
+            ingresosGlobal.forEach(ing => {
+                let fr = getDateFromFirebase(ing.fechaRegistro);
+                if(fr >= fechaLimite) totalIngresos += (parseFloat(ing.efectivo) || 0) + (parseFloat(ing.transferencia) || 0);
+            });
+            gastosGlobal.forEach(gasto => {
+                let fr = getDateFromFirebase(gasto.fechaRegistro);
+                if(fr >= fechaLimite) totalGastos += parseFloat(gasto.importe) || 0;
+            });
+
+            let gananciaNeta = totalIngresos - totalGastos;
+            let textoPeriodo = periodoDias === "todo" ? "Historial Completo" : `Últimos ${periodoDias} días`;
+
+            try {
+                await addDoc(collection(db, "balances"), {
+                    titulo: titulo, periodoTexto: textoPeriodo, ingresos: totalIngresos, gastos: totalGastos,
+                    ganancia: gananciaNeta, fechaCreacion: serverTimestamp()
+                });
+                document.getElementById('balance-titulo').value = ''; document.getElementById('balance-periodo').value = '';
+            } catch (e) { alert("Error al guardar el balance."); }
+        }
+
+        window.eliminarBalance = async function(id) { if(confirm("¿Borrar este balance?")) await deleteDoc(doc(db, "balances", id)); }
+
+        function renderizarBalances() {
+            const tbody = document.getElementById('tabla-balances');
+            if(!tbody) return;
+            tbody.innerHTML = '';
+            if(balancesGlobal.length === 0) { tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #9ca3af; padding: 15px;">No hay balances</td></tr>'; return; }
+
+            balancesGlobal.sort((a,b) => (b.fechaCreacion?.seconds || 0) - (a.fechaCreacion?.seconds || 0)).forEach(bal => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td><strong class="text-neutral-main">${bal.titulo}</strong><br><small class="text-neutral-sub">(${bal.periodoTexto})</small></td>
+                        <td style="text-align: right;" class="text-neutral-sub">$${bal.ingresos}</td>
+                        <td style="text-align: right;" class="text-neutral-sub">$${bal.gastos}</td>
+                        <td style="text-align: right; font-weight: bold;" class="text-neutral-main">$${bal.ganancia}</td>
+                        <td style="text-align: center;"><button onclick="window.eliminarBalance('${bal.id}')" style="background:none;border:none;cursor:pointer;font-size:1.1em;">🗑️</button></td>
+                    </tr>
+                `;
+            });
+        }
+
+        // METRICAS
         window.abrirModalMetricas = function() { calcularMetricas(); document.getElementById('modal-metricas').style.display = 'flex'; }
         window.cerrarModalMetricas = function() { document.getElementById('modal-metricas').style.display = 'none'; }
-
         function calcularMetricas() {
             const m = {}; const n = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
             reservasGlobales.forEach(r => {
@@ -711,9 +1348,7 @@
         window.hacerTurnoFijo = async function() {
             if(!reservaSeleccionadaId) return;
             const resO = reservasGlobales.find(r => r.id === reservaSeleccionadaId); if(!resO) return;
-
             if (resO.esFijo) { alert("Este partido ya pertenece a un turno fijo."); return; }
-
             if (!confirm("¿Convertir en TURNO FIJO?\n\nEl sistema reservará automáticamente esta misma cancha y horario para las próximas 52 semanas.")) return;
 
             try {
@@ -725,33 +1360,13 @@
                     let fT = new Date(fB); fT.setDate(fT.getDate() + (i * 7));
                     let fISO = `${fT.getFullYear()}-${(fT.getMonth()+1).toString().padStart(2,'0')}-${fT.getDate().toString().padStart(2,'0')}`;
                     p.push(addDoc(collection(db, "reservas"), { 
-                        ...resO, id: undefined, fecha: fISO, fechaRegistro: new Date(), esFijo: true, grupoFijoId: idG 
+                        ...resO, id: undefined, fecha: fISO, fechaRegistro: serverTimestamp(), esFijo: true, grupoFijoId: idG, pagoEfectivo: 0, pagoTransferencia: 0, consumos: []
                     }));
                 }
                 await Promise.all(p); 
                 alert(`¡Turno Fijo establecido exitosamente!`); 
                 window.cerrarModalAcciones();
             } catch (e) { alert("Error al establecer fijo."); }
-        }
-
-        window.guardarConfiguracion = async function() {
-            const c = {
-                primerTurno: document.getElementById('input-primer-turno').value,
-                ultimoTurno: document.getElementById('input-ultimo-turno').value,
-                precioF7: document.getElementById('input-precio-f7').value, // Precio F7
-                precioF9: document.getElementById('input-precio-f9').value, // Precio F9
-                precioF11: document.getElementById('input-precio-f11').value, // Precio F11
-                duracionTurno: parseInt(document.getElementById('input-duracion').value),
-                canchasF7: parseInt(document.getElementById('input-canchas-f7').value)||0,
-                canchasF9: parseInt(document.getElementById('input-canchas-f9').value)||0,
-                canchasF11: parseInt(document.getElementById('input-canchas-f11').value)||0,
-                equivF9: parseInt(document.getElementById('input-equiv-f9').value)||2,
-                equivF11: parseInt(document.getElementById('input-equiv-f11').value)||3,
-                diasAbiertos: Array.from(document.querySelectorAll('.check-dia:checked')).map(cb => parseInt(cb.value))
-            };
-            if(c.primerTurno && c.ultimoTurno && c.duracionTurno) {
-                try { await setDoc(doc(db, "configuracion", "turnero"), c); window.cerrarModalConfig(); alert("¡Guardado!"); } catch (e) { alert("Error."); }
-            }
         }
 
         window.accionEliminar = async function() { 
@@ -788,7 +1403,6 @@
                 if(r && r.telefono) {
                     let tel = r.telefono.replace(/[^0-9+]/g, ''); let p = r.fecha.split('-');
                     
-                    // Lógica para asignar el precio correcto según la modalidad
                     let precioAplicado = precioF7;
                     if (r.modalidad === 'F9') precioAplicado = precioF9;
                     if (r.modalidad === 'F11') precioAplicado = precioF11;
@@ -815,6 +1429,7 @@
 
         window.seleccionarFecha = function(fISO) { fechaSeleccionada = fISO; renderizarCalendarios(); renderizarPantallas(); }
 
+        // --- LISTENERS FIREBASE ---
         onSnapshot(doc(db, "configuracion", "turnero"), (docSnap) => {
             if (docSnap.exists()) {
                 let d = docSnap.data();
@@ -852,6 +1467,23 @@
         onSnapshot(collection(db, "reservas"), (snap) => {
             reservasGlobales = []; snap.forEach(d => reservasGlobales.push({ id: d.id, ...d.data() }));
             renderizarPantallas(); 
+            renderizarIngresos();
+            if(reservaSeleccionadaId) renderizarModalTurnoAcciones();
+        });
+
+        // Listeners Finanzas
+        onSnapshot(collection(db, "inventario"), (snapshot) => {
+            inventarioGlobal = []; snapshot.forEach((doc) => inventarioGlobal.push({ id: doc.id, ...doc.data() }));
+            renderizarInventario(); if(reservaSeleccionadaId) renderizarModalTurnoAcciones(); 
+        });
+        onSnapshot(collection(db, "gastos"), (snapshot) => {
+            gastosGlobal = []; snapshot.forEach((doc) => gastosGlobal.push({ id: doc.id, ...doc.data() })); renderizarGastos(); 
+        });
+        onSnapshot(collection(db, "ingresos"), (snapshot) => {
+            ingresosGlobal = []; snapshot.forEach((doc) => ingresosGlobal.push({ id: doc.id, ...doc.data() })); renderizarIngresos(); 
+        });
+        onSnapshot(collection(db, "balances"), (snapshot) => {
+            balancesGlobal = []; snapshot.forEach((doc) => balancesGlobal.push({ id: doc.id, ...doc.data() })); renderizarBalances(); 
         });
 
     </script>
