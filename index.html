@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-// Importaciones estándar de Firebase para entornos Node/React
 import { initializeApp } from "firebase/app";
 import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, serverTimestamp } from "firebase/firestore";
 
-// 1. Configuración de Firebase (Usando las credenciales que proporcionaste)
+// Configuración de Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyAXRXx4WvjBvBWUXV-0LgOB1gOWmrVD7s4",
   authDomain: "reservas-5ec9d.firebaseapp.com",
@@ -13,86 +12,81 @@ const firebaseConfig = {
   appId: "1:687599648901:web:4254769ea30997745c29ec"
 };
 
-// Inicializar Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-export default function AccessControlApp() {
-  const [activeRole, setActiveRole] = useState('propietario');
+export default function AccessControlDashboard() {
   const [visits, setVisits] = useState([]);
 
-  // 2. Escuchar datos en tiempo real (Sustituye al estado simulado)
+  // Escuchar Firebase en tiempo real
   useEffect(() => {
-    // Escuchamos la colección "visitas"
     const unsubscribe = onSnapshot(collection(db, "visitas"), (snapshot) => {
       const visitasData = [];
-      snapshot.forEach((doc) => {
-        visitasData.push({ id: doc.id, ...doc.data() });
-      });
-      // Ordenamos para que las más nuevas salgan primero (opcional, basado en fecha/timestamp)
-      setVisits(visitasData.sort((a, b) => b.timestamp - a.timestamp));
+      snapshot.forEach((doc) => visitasData.push({ id: doc.id, ...doc.data() }));
+      // Ordenar por fecha de creación (las más nuevas arriba)
+      setVisits(visitasData.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0)));
     });
-
-    // Limpiar la suscripción cuando el componente se desmonte
     return () => unsubscribe();
   }, []);
 
-  // 3. Función para agregar a Firebase
+  // Agregar Visita (Programada o Solicitud del Guardia)
   const addVisit = async (newVisit) => {
     try {
       await addDoc(collection(db, "visitas"), {
         ...newVisit,
-        status: 'Pendiente',
-        timestamp: serverTimestamp() // Marca de tiempo del servidor
+        timestamp: serverTimestamp()
       });
     } catch (error) {
-      console.error("Error al autorizar la visita:", error);
-      alert("Hubo un error al guardar. Revisa tu conexión.");
+      console.error("Error al guardar:", error);
     }
   };
 
-  // 4. Función para actualizar en Firebase
+  // Actualizar Estado
   const updateVisitStatus = async (id, newStatus) => {
     try {
-      await updateDoc(doc(db, "visitas", id), {
-        status: newStatus
-      });
+      await updateDoc(doc(db, "visitas", id), { status: newStatus });
     } catch (error) {
-      console.error("Error al actualizar el estado:", error);
-      alert("Hubo un error al actualizar. Revisa tu conexión.");
+      console.error("Error al actualizar:", error);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-6 font-sans">
-      <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-md overflow-hidden">
-        
-        {/* Selector de Roles */}
-        <div className="bg-gray-800 p-4 text-white flex justify-between items-center">
-          <h1 className="text-xl font-bold">Control de Acceso VIP</h1>
-          <div className="space-x-2">
-            <button 
-              className={`px-4 py-2 rounded ${activeRole === 'propietario' ? 'bg-blue-600' : 'bg-gray-600'}`}
-              onClick={() => setActiveRole('propietario')}
-            >
-              Vista Propietario
-            </button>
-            <button 
-              className={`px-4 py-2 rounded ${activeRole === 'guardia' ? 'bg-green-600' : 'bg-gray-600'}`}
-              onClick={() => setActiveRole('guardia')}
-            >
-              Vista Guardia
-            </button>
+    <div className="min-h-screen bg-emerald-50 p-4 md:p-8 font-sans text-gray-800">
+      {/* Cabecera Principal */}
+      <header className="max-w-7xl mx-auto mb-8 bg-emerald-900 rounded-xl shadow-lg p-6 flex justify-between items-center text-white">
+        <div>
+          <h1 className="text-3xl font-bold tracking-wide">GreenView Estates</h1>
+          <p className="text-emerald-200 text-sm mt-1">Sistema Integrado de Control de Acceso</p>
+        </div>
+        <div className="hidden md:flex gap-4">
+          <span className="bg-emerald-800 px-4 py-2 rounded-lg border border-emerald-700">🟢 Sistema En Línea</span>
+        </div>
+      </header>
+
+      {/* Grid de 2 Columnas (Split Screen) */}
+      <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Lado Izquierdo: Propietario */}
+        <div className="bg-white rounded-xl shadow-xl border-t-4 border-emerald-500 overflow-hidden">
+          <div className="bg-emerald-50 p-4 border-b border-emerald-100">
+            <h2 className="text-xl font-bold text-emerald-900 flex items-center gap-2">
+              🏠 App Propietario <span className="text-sm font-normal text-emerald-600">(Lote 14)</span>
+            </h2>
+          </div>
+          <div className="p-6">
+            <OwnerView addVisit={addVisit} visits={visits} updateVisitStatus={updateVisitStatus} />
           </div>
         </div>
 
-        {/* Renderizado Condicional de Vistas */}
-        <div className="p-6">
-          {activeRole === 'propietario' ? (
-            <OwnerView addVisit={addVisit} visits={visits} />
-          ) : (
-            <GuardView visits={visits} updateVisitStatus={updateVisitStatus} />
-          )}
+        {/* Lado Derecho: Guardia */}
+        <div className="bg-white rounded-xl shadow-xl border-t-4 border-teal-600 overflow-hidden">
+          <div className="bg-teal-50 p-4 border-b border-teal-100">
+            <h2 className="text-xl font-bold text-teal-900 flex items-center gap-2">
+              🛡️ App Guardia <span className="text-sm font-normal text-teal-600">(Garita Principal)</span>
+            </h2>
+          </div>
+          <div className="p-6">
+            <GuardView addVisit={addVisit} visits={visits} updateVisitStatus={updateVisitStatus} />
+          </div>
         </div>
       </div>
     </div>
@@ -102,62 +96,85 @@ export default function AccessControlApp() {
 // ==========================================
 // VISTA DEL PROPIETARIO
 // ==========================================
-function OwnerView({ addVisit, visits }) {
+function OwnerView({ addVisit, visits, updateVisitStatus }) {
   const [formData, setFormData] = useState({ visitorName: '', dni: '', date: '' });
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = async (e) => {
+  // Filtrar solo las visitas del Lote 14
+  const myVisits = visits.filter(v => v.ownerName === 'Lote 14 - Familia Pérez');
+  const liveRequests = myVisits.filter(v => v.status === 'Esperando Aprobación');
+  const otherVisits = myVisits.filter(v => v.status !== 'Esperando Aprobación');
+
+  const handleSubmit = (e) => {
     e.preventDefault();
     if (!formData.visitorName || !formData.dni) return;
-    
-    setIsSubmitting(true);
-    await addVisit({ ...formData, ownerName: 'Lote 14 - Familia Pérez' });
-    setIsSubmitting(false);
-    setFormData({ visitorName: '', dni: '', date: '' }); // Limpiar formulario
+    addVisit({ ...formData, ownerName: 'Lote 14 - Familia Pérez', status: 'Pendiente' });
+    setFormData({ visitorName: '', dni: '', date: '' });
   };
 
   return (
-    <div>
-      <h2 className="text-2xl font-bold mb-6 text-gray-800">Panel del Propietario</h2>
-      
-      <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 mb-8">
-        <h3 className="font-semibold mb-4 text-blue-800">Autorizar Nueva Visita</h3>
-        <form onSubmit={handleSubmit} className="flex flex-col md:flex-row gap-4 items-end">
-          <div className="flex-1 w-full">
-            <label className="block text-sm text-gray-600 mb-1">Nombre del Visitante</label>
-            <input type="text" className="w-full p-2 border rounded" 
-              value={formData.visitorName} onChange={e => setFormData({...formData, visitorName: e.target.value})} required />
+    <div className="space-y-8">
+      {/* SECCIÓN 1: Alertas en tiempo real (Gente esperando en la puerta) */}
+      {liveRequests.length > 0 && (
+        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 animate-pulse">
+          <h3 className="text-orange-800 font-bold mb-3 flex items-center gap-2">
+            🔔 ¡Alguien está en la puerta!
+          </h3>
+          <div className="space-y-3">
+            {liveRequests.map(req => (
+              <div key={req.id} className="bg-white p-3 rounded shadow-sm flex justify-between items-center border border-orange-100">
+                <div>
+                  <p className="font-bold text-gray-800">{req.visitorName}</p>
+                  <p className="text-xs text-gray-500">DNI: {req.dni}</p>
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => updateVisitStatus(req.id, 'Rechazado')} className="px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 text-sm font-semibold transition">
+                    Rechazar
+                  </button>
+                  <button onClick={() => updateVisitStatus(req.id, 'Pendiente')} className="px-3 py-1 bg-emerald-500 text-white rounded hover:bg-emerald-600 text-sm font-semibold shadow transition">
+                    Aprobar Ingreso
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
-          <div className="flex-1 w-full">
-            <label className="block text-sm text-gray-600 mb-1">DNI</label>
-            <input type="text" className="w-full p-2 border rounded" 
+        </div>
+      )}
+
+      {/* SECCIÓN 2: Autorizar visita programada */}
+      <div className="bg-emerald-50 rounded-lg p-5 border border-emerald-100">
+        <h3 className="font-bold text-emerald-800 mb-4">Agendar Visita</h3>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+          <div className="grid grid-cols-2 gap-3">
+            <input type="text" placeholder="Nombre completo" className="p-2 border border-emerald-200 rounded focus:outline-none focus:ring-2 focus:ring-emerald-400" 
+              value={formData.visitorName} onChange={e => setFormData({...formData, visitorName: e.target.value})} required />
+            <input type="text" placeholder="DNI" className="p-2 border border-emerald-200 rounded focus:outline-none focus:ring-2 focus:ring-emerald-400" 
               value={formData.dni} onChange={e => setFormData({...formData, dni: e.target.value})} required />
           </div>
-          <div className="flex-1 w-full">
-            <label className="block text-sm text-gray-600 mb-1">Fecha</label>
-            <input type="date" className="w-full p-2 border rounded" 
+          <div className="flex gap-3 items-center">
+            <input type="date" className="flex-1 p-2 border border-emerald-200 rounded focus:outline-none focus:ring-2 focus:ring-emerald-400 text-gray-600" 
               value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} required />
+            <button type="submit" className="bg-emerald-600 text-white px-6 py-2 rounded font-semibold hover:bg-emerald-700 shadow-md transition">
+              Generar Pase
+            </button>
           </div>
-          <button type="submit" disabled={isSubmitting} className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:opacity-50 w-full md:w-auto">
-            {isSubmitting ? 'Guardando...' : 'Autorizar'}
-          </button>
         </form>
       </div>
 
-      <h3 className="font-semibold mb-4 text-gray-700">Mis Autorizaciones</h3>
-      <div className="space-y-3">
-        {visits.filter(v => v.ownerName === 'Lote 14 - Familia Pérez').map(visit => (
-          <div key={visit.id} className="flex justify-between items-center p-3 border rounded bg-white">
-            <div>
-              <p className="font-medium">{visit.visitorName} <span className="text-sm text-gray-500">(DNI: {visit.dni})</span></p>
-              <p className="text-sm text-gray-500">Fecha: {visit.date}</p>
+      {/* SECCIÓN 3: Historial */}
+      <div>
+        <h3 className="font-bold text-gray-700 mb-3 border-b pb-2">Pases Autorizados y Activos</h3>
+        <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
+          {otherVisits.map(visit => (
+            <div key={visit.id} className="flex justify-between items-center p-3 border rounded-lg bg-gray-50 hover:bg-white transition">
+              <div>
+                <p className="font-medium text-gray-800">{visit.visitorName} <span className="text-xs text-gray-400 ml-1">({visit.dni})</span></p>
+                <p className="text-xs text-emerald-600 font-medium">Fecha: {visit.date}</p>
+              </div>
+              <StatusBadge status={visit.status} />
             </div>
-            <StatusBadge status={visit.status} />
-          </div>
-        ))}
-        {visits.filter(v => v.ownerName === 'Lote 14 - Familia Pérez').length === 0 && (
-          <p className="text-gray-500 text-sm">Aún no tienes visitas autorizadas.</p>
-        )}
+          ))}
+          {otherVisits.length === 0 && <p className="text-sm text-gray-400 italic">No hay registros recientes.</p>}
+        </div>
       </div>
     </div>
   );
@@ -166,76 +183,108 @@ function OwnerView({ addVisit, visits }) {
 // ==========================================
 // VISTA DEL GUARDIA
 // ==========================================
-function GuardView({ visits, updateVisitStatus }) {
+function GuardView({ addVisit, visits, updateVisitStatus }) {
   const [searchTerm, setSearchTerm] = useState('');
+  const [liveReqForm, setLiveReqForm] = useState({ visitorName: '', dni: '', lote: 'Lote 14 - Familia Pérez' });
 
-  // Filtrar de forma segura (asegurando que los campos existan)
+  // Filtrar de forma segura
   const filteredVisits = visits.filter(v => 
     (v.dni && v.dni.includes(searchTerm)) || 
     (v.visitorName && v.visitorName.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
+  const handleLiveRequest = (e) => {
+    e.preventDefault();
+    if(!liveReqForm.visitorName || !liveReqForm.dni) return;
+    
+    // Generamos la visita con estado especial para que el dueño la vea
+    addVisit({
+      ...liveReqForm,
+      ownerName: liveReqForm.lote,
+      date: new Date().toISOString().split('T')[0], // Fecha de hoy
+      status: 'Esperando Aprobación'
+    });
+    setLiveReqForm({ ...liveReqForm, visitorName: '', dni: '' });
+  };
+
   return (
-    <div>
-      <h2 className="text-2xl font-bold mb-6 text-gray-800">Panel de Control de Guardia</h2>
-      
-      <div className="mb-6">
+    <div className="space-y-8">
+      {/* SECCIÓN 1: Visita sin aviso (Llamar al Propietario) */}
+      <div className="bg-teal-50 border border-teal-200 rounded-lg p-5">
+        <h3 className="font-bold text-teal-900 mb-3">Registrar Visita Sin Aviso</h3>
+        <p className="text-xs text-teal-700 mb-4">Envía una notificación al propietario para que apruebe el ingreso.</p>
+        <form onSubmit={handleLiveRequest} className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <input type="text" placeholder="Nombre Visita" className="p-2 border border-teal-200 rounded focus:ring-2 focus:ring-teal-400" 
+            value={liveReqForm.visitorName} onChange={e => setLiveReqForm({...liveReqForm, visitorName: e.target.value})} required/>
+          <input type="text" placeholder="DNI" className="p-2 border border-teal-200 rounded focus:ring-2 focus:ring-teal-400" 
+            value={liveReqForm.dni} onChange={e => setLiveReqForm({...liveReqForm, dni: e.target.value})} required/>
+          <select className="p-2 border border-teal-200 rounded text-gray-700 bg-white"
+            value={liveReqForm.lote} onChange={e => setLiveReqForm({...liveReqForm, lote: e.target.value})}>
+            <option value="Lote 14 - Familia Pérez">Lote 14 - Familia Pérez</option>
+            <option value="Lote 15 - Familia Gómez">Lote 15 - Familia Gómez</option>
+          </select>
+          <button type="submit" className="bg-teal-600 text-white rounded p-2 font-semibold hover:bg-teal-700 shadow transition">
+            Solicitar Permiso
+          </button>
+        </form>
+      </div>
+
+      {/* SECCIÓN 2: Control Operativo (Buscador) */}
+      <div>
+        <h3 className="font-bold text-gray-700 mb-3 border-b pb-2">Control de Pases</h3>
         <input 
           type="text" 
-          placeholder="Buscar por DNI o Apellido..." 
-          className="w-full p-3 border rounded shadow-sm"
+          placeholder="🔎 Buscar DNI o Apellido..." 
+          className="w-full p-3 border border-gray-300 rounded-lg shadow-sm mb-4 focus:ring-2 focus:ring-teal-400 focus:outline-none"
           value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
         />
-      </div>
 
-      <div className="space-y-4">
-        {filteredVisits.map(visit => (
-          <div key={visit.id} className="border rounded-lg p-4 bg-white shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
-            <div className="flex-1">
-              <h3 className="font-bold text-lg">{visit.visitorName}</h3>
-              <p className="text-gray-600">DNI: {visit.dni} | Fecha: {visit.date}</p>
-              <p className="text-sm text-blue-600 font-medium">Autoriza: {visit.ownerName}</p>
-            </div>
-            
-            <div className="flex items-center gap-4">
-              <StatusBadge status={visit.status} />
+        <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
+          {filteredVisits.map(visit => (
+            <div key={visit.id} className="border border-gray-200 rounded-lg p-4 bg-white shadow-sm flex flex-col md:flex-row justify-between gap-4 hover:shadow-md transition">
+              <div>
+                <h3 className="font-bold text-lg text-gray-800">{visit.visitorName}</h3>
+                <p className="text-gray-500 text-sm">DNI: {visit.dni}</p>
+                <p className="text-xs font-semibold text-teal-700 mt-1">Destino: {visit.ownerName}</p>
+              </div>
               
-              <div className="flex flex-col gap-2">
+              <div className="flex flex-col items-end gap-2 justify-center">
+                <StatusBadge status={visit.status} />
+                
                 {visit.status === 'Pendiente' && (
-                  <button onClick={() => updateVisitStatus(visit.id, 'Ingresó')} className="bg-green-500 text-white px-4 py-1 rounded text-sm hover:bg-green-600 transition-colors">
-                    Registrar Ingreso
+                  <button onClick={() => updateVisitStatus(visit.id, 'Ingresó')} className="w-full bg-emerald-500 text-white px-4 py-1.5 rounded text-sm font-bold shadow hover:bg-emerald-600 transition">
+                    Marcar Ingreso
                   </button>
                 )}
                 {visit.status === 'Ingresó' && (
-                  <button onClick={() => updateVisitStatus(visit.id, 'Salió')} className="bg-gray-500 text-white px-4 py-1 rounded text-sm hover:bg-gray-600 transition-colors">
-                    Registrar Salida
+                  <button onClick={() => updateVisitStatus(visit.id, 'Salió')} className="w-full bg-gray-500 text-white px-4 py-1.5 rounded text-sm font-bold shadow hover:bg-gray-600 transition">
+                    Marcar Salida
                   </button>
                 )}
               </div>
             </div>
-          </div>
-        ))}
-        
-        {filteredVisits.length === 0 && (
-          <p className="text-center text-gray-500 py-8">No se encontraron autorizaciones en la base de datos.</p>
-        )}
+          ))}
+          {filteredVisits.length === 0 && <p className="text-center text-gray-400 py-4 text-sm">No se encontraron registros.</p>}
+        </div>
       </div>
     </div>
   );
 }
 
-// Componente visual para los estados
+// Componente visual para los estados (Paleta verde y neutral)
 function StatusBadge({ status }) {
-  const colors = {
-    'Pendiente': 'bg-yellow-100 text-yellow-800 border-yellow-200',
-    'Ingresó': 'bg-green-100 text-green-800 border-green-200',
-    'Salió': 'bg-gray-100 text-gray-800 border-gray-200'
+  const styles = {
+    'Pendiente': 'bg-blue-50 text-blue-700 border-blue-200',
+    'Esperando Aprobación': 'bg-orange-100 text-orange-800 border-orange-300 animate-pulse',
+    'Ingresó': 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    'Salió': 'bg-gray-100 text-gray-600 border-gray-200',
+    'Rechazado': 'bg-red-50 text-red-700 border-red-200'
   };
   
   return (
-    <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${colors[status] || 'bg-gray-100 text-gray-800'}`}>
-      {status || 'Desconocido'}
+    <span className={`px-3 py-1 rounded-full text-xs font-bold border ${styles[status] || 'bg-gray-100'}`}>
+      {status}
     </span>
   );
 }
