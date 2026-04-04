@@ -1,314 +1,332 @@
-import React, { useState, useEffect } from 'react';
-import { initializeApp } from "firebase/app";
-import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, serverTimestamp } from "firebase/firestore";
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GreenView Estates - Control de Acceso</title>
 
-// Configuración de Firebase
-const firebaseConfig = {
-  apiKey: "AIzaSyAXRXx4WvjBvBWUXV-0LgOB1gOWmrVD7s4",
-  authDomain: "reservas-5ec9d.firebaseapp.com",
-  projectId: "reservas-5ec9d",
-  storageBucket: "reservas-5ec9d.firebasestorage.app",
-  messagingSenderId: "687599648901",
-  appId: "1:687599648901:web:4254769ea30997745c29ec"
-};
+    <script src="https://cdn.tailwindcss.com"></script>
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-export default function AccessControlDarkApp() {
-  const [activeView, setActiveView] = useState('propietario');
-  const [visits, setVisits] = useState([]);
-
-  // Escuchar Firebase en tiempo real
-  useEffect(() => {
-    const unsubscribe = onSnapshot(collection(db, "visitas"), (snapshot) => {
-      const visitasData = [];
-      snapshot.forEach((doc) => visitasData.push({ id: doc.id, ...doc.data() }));
-      setVisits(visitasData.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0)));
-    });
-    return () => unsubscribe();
-  }, []);
-
-  const addVisit = async (newVisit) => {
-    try {
-      await addDoc(collection(db, "visitas"), { ...newVisit, timestamp: serverTimestamp() });
-    } catch (error) {
-      console.error("Error al guardar:", error);
-    }
-  };
-
-  const updateVisitStatus = async (id, newStatus) => {
-    try {
-      await updateDoc(doc(db, "visitas", id), { status: newStatus });
-    } catch (error) {
-      console.error("Error al actualizar:", error);
-    }
-  };
-
-  return (
-    <div className="min-h-screen bg-[#131820] text-gray-200 flex flex-col items-center pt-10 px-4 font-sans selection:bg-emerald-500 selection:text-white">
-      
-      {/* CSS Incrustado para el calendario y la barra de desplazamiento */}
-      <style>{`
+    <style>
         input[type="date"]::-webkit-calendar-picker-indicator {
-          filter: invert(1);
-          opacity: 0.6;
-          cursor: pointer;
+            filter: invert(1);
+            opacity: 0.6;
+            cursor: pointer;
         }
         input[type="date"]::-webkit-calendar-picker-indicator:hover {
-          opacity: 1;
+            opacity: 1;
         }
         .custom-scrollbar::-webkit-scrollbar {
-          width: 6px;
+            width: 6px;
         }
         .custom-scrollbar::-webkit-scrollbar-track {
-          background: #131820;
-          border-radius: 4px;
+            background: #131820;
+            border-radius: 4px;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #374151;
-          border-radius: 4px;
+            background: #374151;
+            border-radius: 4px;
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: #4b5563;
+            background: #4b5563;
         }
-      `}</style>
-
-      {/* Botones de Navegación Superiores */}
-      <div className="flex gap-4 mb-8">
-        <button 
-          onClick={() => setActiveView('propietario')}
-          className={`flex items-center gap-2 px-6 py-2 rounded-lg border transition-all duration-200 ${
-            activeView === 'propietario' 
-              ? 'bg-emerald-900/30 border-emerald-500 text-emerald-400 font-bold shadow-[0_0_15px_rgba(16,185,129,0.15)]' 
-              : 'bg-[#1e252d] border-gray-700 text-gray-400 hover:text-gray-200 hover:border-gray-500'
-          }`}
-        >
-          📱 Vista Propietario
-        </button>
-        <button 
-          onClick={() => setActiveView('guardia')}
-          className={`flex items-center gap-2 px-6 py-2 rounded-lg border transition-all duration-200 ${
-            activeView === 'guardia' 
-              ? 'bg-emerald-900/30 border-emerald-500 text-emerald-400 font-bold shadow-[0_0_15px_rgba(16,185,129,0.15)]' 
-              : 'bg-[#1e252d] border-gray-700 text-gray-400 hover:text-gray-200 hover:border-gray-500'
-          }`}
-        >
-          💻 Vista Guardia
-        </button>
-      </div>
-
-      {/* Tarjeta Central */}
-      <div className="bg-[#1e252d] w-full max-w-2xl rounded-2xl p-6 md:p-8 shadow-2xl border border-gray-800 relative overflow-hidden">
-        {/* Borde superior verde decorativo */}
-        <div className="absolute top-0 left-0 w-full h-1 bg-emerald-500"></div>
-        
-        {activeView === 'propietario' ? (
-          <OwnerView addVisit={addVisit} visits={visits} updateVisitStatus={updateVisitStatus} />
-        ) : (
-          <GuardView addVisit={addVisit} visits={visits} updateVisitStatus={updateVisitStatus} />
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ==========================================
-// VISTA DEL PROPIETARIO
-// ==========================================
-function OwnerView({ addVisit, visits, updateVisitStatus }) {
-  const [formData, setFormData] = useState({ visitorName: '', dni: '', date: '' });
-
-  const myVisits = visits.filter(v => v.ownerName === 'Lote 14 - Familia Pérez');
-  const liveRequests = myVisits.filter(v => v.status === 'Esperando Aprobación');
-  const otherVisits = myVisits.filter(v => v.status !== 'Esperando Aprobación');
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!formData.visitorName || !formData.dni) return;
-    addVisit({ ...formData, ownerName: 'Lote 14 - Familia Pérez', status: 'Pendiente' });
-    setFormData({ visitorName: '', dni: '', date: '' });
-  };
-
-  return (
-    <div className="space-y-8 animate-fade-in">
-      <h2 className="text-2xl font-bold text-white tracking-wide">Panel de Autorizaciones</h2>
-
-      {/* Alertas de Ingreso Inmediato */}
-      {liveRequests.length > 0 && (
-        <div className="bg-orange-900/20 border border-orange-500/50 rounded-lg p-5">
-          <h3 className="text-orange-400 font-bold mb-4 flex items-center gap-2 animate-pulse">
-            🔔 Permiso de Ingreso Solicitado
-          </h3>
-          <div className="space-y-3">
-            {liveRequests.map(req => (
-              <div key={req.id} className="bg-[#131820] p-4 rounded-lg shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border border-gray-700">
-                <div>
-                  <p className="font-bold text-gray-100 text-lg">{req.visitorName}</p>
-                  <p className="text-sm text-gray-400">DNI: {req.dni}</p>
-                </div>
-                <div className="flex gap-3 w-full sm:w-auto">
-                  <button onClick={() => updateVisitStatus(req.id, 'Rechazado')} className="flex-1 px-4 py-2 bg-red-900/30 text-red-400 border border-red-800 rounded hover:bg-red-900/50 transition">
-                    Rechazar
-                  </button>
-                  <button onClick={() => updateVisitStatus(req.id, 'Pendiente')} className="flex-1 px-4 py-2 bg-emerald-600 text-white border border-emerald-500 rounded hover:bg-emerald-500 transition shadow-[0_0_10px_rgba(16,185,129,0.2)]">
-                    Aprobar
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Formulario Nueva Visita */}
-      <div className="bg-[#131820] rounded-xl p-6 border border-gray-800">
-        <h3 className="font-semibold text-gray-300 mb-4 border-b border-gray-800 pb-2">Agendar Nueva Visita</h3>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <input type="text" placeholder="Nombre completo" className="p-3 bg-[#1e252d] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500" 
-              value={formData.visitorName} onChange={e => setFormData({...formData, visitorName: e.target.value})} required />
-            <input type="text" placeholder="DNI" className="p-3 bg-[#1e252d] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500" 
-              value={formData.dni} onChange={e => setFormData({...formData, dni: e.target.value})} required />
-          </div>
-          <div className="flex flex-col sm:flex-row gap-4">
-            {/* Se agregó style={{ colorScheme: 'dark' }} para el calendario nativo */}
-            <input type="date" style={{ colorScheme: 'dark' }} className="flex-1 p-3 bg-[#1e252d] border border-gray-700 rounded-lg text-gray-300 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500" 
-              value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} required />
-            <button type="submit" className="bg-emerald-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-emerald-500 transition shadow-[0_0_10px_rgba(16,185,129,0.2)]">
-              Generar Pase
-            </button>
-          </div>
-        </form>
-      </div>
-
-      {/* Historial */}
-      <div>
-        <h3 className="font-semibold text-gray-400 mb-4 text-sm uppercase tracking-wider">Historial de Pases</h3>
-        <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-          {otherVisits.map(visit => (
-            <div key={visit.id} className="flex justify-between items-center p-4 border border-gray-800 rounded-lg bg-[#131820] hover:border-gray-700 transition">
-              <div>
-                <p className="font-medium text-gray-200">{visit.visitorName} <span className="text-xs text-gray-500 ml-2">DNI: {visit.dni}</span></p>
-                <p className="text-xs text-gray-500 mt-1">Fecha reservada: {visit.date}</p>
-              </div>
-              <StatusBadge status={visit.status} />
-            </div>
-          ))}
-          {otherVisits.length === 0 && <p className="text-sm text-gray-600 text-center py-4">No hay registros recientes.</p>}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ==========================================
-// VISTA DEL GUARDIA
-// ==========================================
-function GuardView({ addVisit, visits, updateVisitStatus }) {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [liveReqForm, setLiveReqForm] = useState({ visitorName: '', dni: '', lote: 'Lote 14 - Familia Pérez' });
-
-  const filteredVisits = visits.filter(v => 
-    (v.dni && v.dni.includes(searchTerm)) || 
-    (v.visitorName && v.visitorName.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
-
-  const handleLiveRequest = (e) => {
-    e.preventDefault();
-    if(!liveReqForm.visitorName || !liveReqForm.dni) return;
+    </style>
+</head>
+<body class="bg-[#131820]">
     
-    addVisit({
-      ...liveReqForm,
-      ownerName: liveReqForm.lote,
-      date: new Date().toISOString().split('T')[0],
-      status: 'Esperando Aprobación'
-    });
-    setLiveReqForm({ ...liveReqForm, visitorName: '', dni: '' });
-  };
+    <div id="root"></div>
 
-  return (
-    <div className="space-y-8 animate-fade-in">
-      <h2 className="text-2xl font-bold text-white tracking-wide">Control Operativo</h2>
+    <script type="text/babel" data-type="module">
+        
+        // Importaciones de Firebase desde su CDN oficial
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
-      {/* Visita sin aviso */}
-      <div className="bg-[#131820] border border-gray-800 rounded-xl p-6">
-        <h3 className="font-semibold text-emerald-400 mb-2">Visita Sin Previo Aviso</h3>
-        <p className="text-sm text-gray-400 mb-5 border-b border-gray-800 pb-3">Enviar notificación al propietario para autorización en tiempo real.</p>
-        <form onSubmit={handleLiveRequest} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <input type="text" placeholder="Nombre completo" className="p-3 bg-[#1e252d] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500" 
-            value={liveReqForm.visitorName} onChange={e => setLiveReqForm({...liveReqForm, visitorName: e.target.value})} required/>
-          <input type="text" placeholder="DNI" className="p-3 bg-[#1e252d] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500" 
-            value={liveReqForm.dni} onChange={e => setLiveReqForm({...liveReqForm, dni: e.target.value})} required/>
-          <select className="p-3 bg-[#1e252d] border border-gray-700 rounded-lg text-gray-300 focus:outline-none focus:border-emerald-500"
-            value={liveReqForm.lote} onChange={e => setLiveReqForm({...liveReqForm, lote: e.target.value})}>
-            <option value="Lote 14 - Familia Pérez">Lote 14 - Familia Pérez</option>
-            <option value="Lote 15 - Familia Gómez">Lote 15 - Familia Gómez</option>
-          </select>
-          <button type="submit" className="bg-[#1e252d] text-emerald-400 border border-emerald-500/50 rounded-lg font-bold hover:bg-emerald-900/30 transition">
-            Solicitar Permiso
-          </button>
-        </form>
-      </div>
+        // Obtener los Hooks de React desde la variable global 'React'
+        const { useState, useEffect } = React;
 
-      {/* Buscador de Pases */}
-      <div>
-        <div className="relative mb-6">
-          <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-500">🔍</span>
-          <input 
-            type="text" 
-            placeholder="Buscar DNI o Apellido..." 
-            className="w-full pl-11 p-3 bg-[#131820] border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-          />
-        </div>
+        // Configuración de tu Firebase
+        const firebaseConfig = {
+            apiKey: "AIzaSyAXRXx4WvjBvBWUXV-0LgOB1gOWmrVD7s4",
+            authDomain: "reservas-5ec9d.firebaseapp.com",
+            projectId: "reservas-5ec9d",
+            storageBucket: "reservas-5ec9d.firebasestorage.app",
+            messagingSenderId: "687599648901",
+            appId: "1:687599648901:web:4254769ea30997745c29ec"
+        };
 
-        <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-          {filteredVisits.map(visit => (
-            <div key={visit.id} className="border border-gray-800 rounded-xl p-5 bg-[#131820] flex flex-col md:flex-row justify-between gap-5 hover:border-gray-700 transition">
-              <div>
-                <h3 className="font-bold text-lg text-gray-100">{visit.visitorName}</h3>
-                <p className="text-gray-400 text-sm mt-1">DNI: <span className="text-gray-300">{visit.dni}</span></p>
-                <p className="text-xs font-semibold text-emerald-500 mt-2 bg-emerald-900/20 inline-block px-2 py-1 rounded">Destino: {visit.ownerName}</p>
-              </div>
-              
-              <div className="flex flex-col items-start md:items-end gap-3 justify-center">
-                <StatusBadge status={visit.status} />
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Componente Principal
+        function AccessControlDarkApp() {
+            const [activeView, setActiveView] = useState('propietario');
+            const [visits, setVisits] = useState([]);
+
+            // Escuchar Firebase en tiempo real
+            useEffect(() => {
+                const unsubscribe = onSnapshot(collection(db, "visitas"), (snapshot) => {
+                    const visitasData = [];
+                    snapshot.forEach((doc) => visitasData.push({ id: doc.id, ...doc.data() }));
+                    setVisits(visitasData.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0)));
+                });
+                return () => unsubscribe();
+            }, []);
+
+            const addVisit = async (newVisit) => {
+                try {
+                    await addDoc(collection(db, "visitas"), { ...newVisit, timestamp: serverTimestamp() });
+                } catch (error) {
+                    console.error("Error al guardar:", error);
+                }
+            };
+
+            const updateVisitStatus = async (id, newStatus) => {
+                try {
+                    await updateDoc(doc(db, "visitas", id), { status: newStatus });
+                } catch (error) {
+                    console.error("Error al actualizar:", error);
+                }
+            };
+
+            return (
+                <div className="min-h-screen text-gray-200 flex flex-col items-center pt-10 px-4 font-sans selection:bg-emerald-500 selection:text-white">
+                    
+                    {/* Botones de Navegación Superiores */}
+                    <div className="flex gap-4 mb-8">
+                        <button 
+                            onClick={() => setActiveView('propietario')}
+                            className={`flex items-center gap-2 px-6 py-2 rounded-lg border transition-all duration-200 ${
+                                activeView === 'propietario' 
+                                ? 'bg-emerald-900/30 border-emerald-500 text-emerald-400 font-bold shadow-[0_0_15px_rgba(16,185,129,0.15)]' 
+                                : 'bg-[#1e252d] border-gray-700 text-gray-400 hover:text-gray-200 hover:border-gray-500'
+                            }`}
+                        >
+                            📱 Vista Propietario
+                        </button>
+                        <button 
+                            onClick={() => setActiveView('guardia')}
+                            className={`flex items-center gap-2 px-6 py-2 rounded-lg border transition-all duration-200 ${
+                                activeView === 'guardia' 
+                                ? 'bg-emerald-900/30 border-emerald-500 text-emerald-400 font-bold shadow-[0_0_15px_rgba(16,185,129,0.15)]' 
+                                : 'bg-[#1e252d] border-gray-700 text-gray-400 hover:text-gray-200 hover:border-gray-500'
+                            }`}
+                        >
+                            💻 Vista Guardia
+                        </button>
+                    </div>
+
+                    {/* Tarjeta Central */}
+                    <div className="bg-[#1e252d] w-full max-w-2xl rounded-2xl p-6 md:p-8 shadow-2xl border border-gray-800 relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-full h-1 bg-emerald-500"></div>
+                        
+                        {activeView === 'propietario' ? (
+                            <OwnerView addVisit={addVisit} visits={visits} updateVisitStatus={updateVisitStatus} />
+                        ) : (
+                            <GuardView addVisit={addVisit} visits={visits} updateVisitStatus={updateVisitStatus} />
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        // VISTA PROPIETARIO
+        function OwnerView({ addVisit, visits, updateVisitStatus }) {
+            const [formData, setFormData] = useState({ visitorName: '', dni: '', date: '' });
+
+            const myVisits = visits.filter(v => v.ownerName === 'Lote 14 - Familia Pérez');
+            const liveRequests = myVisits.filter(v => v.status === 'Esperando Aprobación');
+            const otherVisits = myVisits.filter(v => v.status !== 'Esperando Aprobación');
+
+            const handleSubmit = (e) => {
+                e.preventDefault();
+                if (!formData.visitorName || !formData.dni) return;
+                addVisit({ ...formData, ownerName: 'Lote 14 - Familia Pérez', status: 'Pendiente' });
+                setFormData({ visitorName: '', dni: '', date: '' });
+            };
+
+            return (
+                <div className="space-y-8">
+                    <h2 className="text-2xl font-bold text-white tracking-wide">Panel de Autorizaciones</h2>
+
+                    {liveRequests.length > 0 && (
+                        <div className="bg-orange-900/20 border border-orange-500/50 rounded-lg p-5">
+                            <h3 className="text-orange-400 font-bold mb-4 flex items-center gap-2 animate-pulse">
+                                🔔 Permiso de Ingreso Solicitado
+                            </h3>
+                            <div className="space-y-3">
+                                {liveRequests.map(req => (
+                                    <div key={req.id} className="bg-[#131820] p-4 rounded-lg shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border border-gray-700">
+                                        <div>
+                                            <p className="font-bold text-gray-100 text-lg">{req.visitorName}</p>
+                                            <p className="text-sm text-gray-400">DNI: {req.dni}</p>
+                                        </div>
+                                        <div className="flex gap-3 w-full sm:w-auto">
+                                            <button onClick={() => updateVisitStatus(req.id, 'Rechazado')} className="flex-1 px-4 py-2 bg-red-900/30 text-red-400 border border-red-800 rounded hover:bg-red-900/50 transition">
+                                                Rechazar
+                                            </button>
+                                            <button onClick={() => updateVisitStatus(req.id, 'Pendiente')} className="flex-1 px-4 py-2 bg-emerald-600 text-white border border-emerald-500 rounded hover:bg-emerald-500 transition shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+                                                Aprobar
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="bg-[#131820] rounded-xl p-6 border border-gray-800">
+                        <h3 className="font-semibold text-gray-300 mb-4 border-b border-gray-800 pb-2">Agendar Nueva Visita</h3>
+                        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <input type="text" placeholder="Nombre completo" className="p-3 bg-[#1e252d] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500" 
+                                    value={formData.visitorName} onChange={e => setFormData({...formData, visitorName: e.target.value})} required />
+                                <input type="text" placeholder="DNI" className="p-3 bg-[#1e252d] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500" 
+                                    value={formData.dni} onChange={e => setFormData({...formData, dni: e.target.value})} required />
+                            </div>
+                            <div className="flex flex-col sm:flex-row gap-4">
+                                <input type="date" style={{ colorScheme: 'dark' }} className="flex-1 p-3 bg-[#1e252d] border border-gray-700 rounded-lg text-gray-300 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500" 
+                                    value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} required />
+                                <button type="submit" className="bg-emerald-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-emerald-500 transition shadow-[0_0_10px_rgba(16,185,129,0.2)]">
+                                    Generar Pase
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div>
+                        <h3 className="font-semibold text-gray-400 mb-4 text-sm uppercase tracking-wider">Historial de Pases</h3>
+                        <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+                            {otherVisits.map(visit => (
+                                <div key={visit.id} className="flex justify-between items-center p-4 border border-gray-800 rounded-lg bg-[#131820] hover:border-gray-700 transition">
+                                    <div>
+                                        <p className="font-medium text-gray-200">{visit.visitorName} <span className="text-xs text-gray-500 ml-2">DNI: {visit.dni}</span></p>
+                                        <p className="text-xs text-gray-500 mt-1">Fecha reservada: {visit.date}</p>
+                                    </div>
+                                    <StatusBadge status={visit.status} />
+                                </div>
+                            ))}
+                            {otherVisits.length === 0 && <p className="text-sm text-gray-600 text-center py-4">No hay registros recientes.</p>}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // VISTA GUARDIA
+        function GuardView({ addVisit, visits, updateVisitStatus }) {
+            const [searchTerm, setSearchTerm] = useState('');
+            const [liveReqForm, setLiveReqForm] = useState({ visitorName: '', dni: '', lote: 'Lote 14 - Familia Pérez' });
+
+            const filteredVisits = visits.filter(v => 
+                (v.dni && v.dni.includes(searchTerm)) || 
+                (v.visitorName && v.visitorName.toLowerCase().includes(searchTerm.toLowerCase()))
+            );
+
+            const handleLiveRequest = (e) => {
+                e.preventDefault();
+                if(!liveReqForm.visitorName || !liveReqForm.dni) return;
                 
-                {visit.status === 'Pendiente' && (
-                  <button onClick={() => updateVisitStatus(visit.id, 'Ingresó')} className="w-full md:w-auto bg-emerald-600 text-white px-6 py-2 rounded-lg text-sm font-bold shadow-[0_0_10px_rgba(16,185,129,0.2)] hover:bg-emerald-500 transition">
-                    Marcar Ingreso
-                  </button>
-                )}
-                {visit.status === 'Ingresó' && (
-                  <button onClick={() => updateVisitStatus(visit.id, 'Salió')} className="w-full md:w-auto bg-gray-700 text-white px-6 py-2 rounded-lg text-sm font-bold hover:bg-gray-600 transition">
-                    Marcar Salida
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
-          {filteredVisits.length === 0 && <p className="text-center text-gray-600 py-8">No se encontraron autorizaciones activas.</p>}
-        </div>
-      </div>
-    </div>
-  );
-}
+                addVisit({
+                    ...liveReqForm,
+                    ownerName: liveReqForm.lote,
+                    date: new Date().toISOString().split('T')[0],
+                    status: 'Esperando Aprobación'
+                });
+                setLiveReqForm({ ...liveReqForm, visitorName: '', dni: '' });
+            };
 
-// Componente visual para los estados
-function StatusBadge({ status }) {
-  const styles = {
-    'Pendiente': 'bg-blue-900/30 text-blue-400 border-blue-800/50',
-    'Esperando Aprobación': 'bg-orange-900/30 text-orange-400 border-orange-800/50 animate-pulse',
-    'Ingresó': 'bg-emerald-900/30 text-emerald-400 border-emerald-800/50',
-    'Salió': 'bg-gray-800 text-gray-400 border-gray-700',
-    'Rechazado': 'bg-red-900/30 text-red-400 border-red-800/50'
-  };
-  
-  return (
-    <span className={`px-3 py-1 rounded-md text-xs font-bold border tracking-wide uppercase ${styles[status] || 'bg-gray-800 text-gray-400'}`}>
-      {status}
-    </span>
-  );
-}
+            return (
+                <div className="space-y-8">
+                    <h2 className="text-2xl font-bold text-white tracking-wide">Control Operativo</h2>
+
+                    <div className="bg-[#131820] border border-gray-800 rounded-xl p-6">
+                        <h3 className="font-semibold text-emerald-400 mb-2">Visita Sin Previo Aviso</h3>
+                        <p className="text-sm text-gray-400 mb-5 border-b border-gray-800 pb-3">Enviar notificación al propietario para autorización.</p>
+                        <form onSubmit={handleLiveRequest} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <input type="text" placeholder="Nombre completo" className="p-3 bg-[#1e252d] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500" 
+                                value={liveReqForm.visitorName} onChange={e => setLiveReqForm({...liveReqForm, visitorName: e.target.value})} required/>
+                            <input type="text" placeholder="DNI" className="p-3 bg-[#1e252d] border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500" 
+                                value={liveReqForm.dni} onChange={e => setLiveReqForm({...liveReqForm, dni: e.target.value})} required/>
+                            <select className="p-3 bg-[#1e252d] border border-gray-700 rounded-lg text-gray-300 focus:outline-none focus:border-emerald-500"
+                                value={liveReqForm.lote} onChange={e => setLiveReqForm({...liveReqForm, lote: e.target.value})}>
+                                <option value="Lote 14 - Familia Pérez">Lote 14 - Familia Pérez</option>
+                                <option value="Lote 15 - Familia Gómez">Lote 15 - Familia Gómez</option>
+                            </select>
+                            <button type="submit" className="bg-[#1e252d] text-emerald-400 border border-emerald-500/50 rounded-lg font-bold hover:bg-emerald-900/30 transition">
+                                Solicitar Permiso
+                            </button>
+                        </form>
+                    </div>
+
+                    <div>
+                        <div className="relative mb-6">
+                            <span className="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-500">🔍</span>
+                            <input 
+                                type="text" 
+                                placeholder="Buscar DNI o Apellido..." 
+                                className="w-full pl-11 p-3 bg-[#131820] border border-gray-700 rounded-xl text-white placeholder-gray-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                                value={searchTerm}
+                                onChange={e => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+
+                        <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                            {filteredVisits.map(visit => (
+                                <div key={visit.id} className="border border-gray-800 rounded-xl p-5 bg-[#131820] flex flex-col md:flex-row justify-between gap-5 hover:border-gray-700 transition">
+                                    <div>
+                                        <h3 className="font-bold text-lg text-gray-100">{visit.visitorName}</h3>
+                                        <p className="text-gray-400 text-sm mt-1">DNI: <span className="text-gray-300">{visit.dni}</span></p>
+                                        <p className="text-xs font-semibold text-emerald-500 mt-2 bg-emerald-900/20 inline-block px-2 py-1 rounded">Destino: {visit.ownerName}</p>
+                                    </div>
+                                    
+                                    <div className="flex flex-col items-start md:items-end gap-3 justify-center">
+                                        <StatusBadge status={visit.status} />
+                                        
+                                        {visit.status === 'Pendiente' && (
+                                            <button onClick={() => updateVisitStatus(visit.id, 'Ingresó')} className="w-full md:w-auto bg-emerald-600 text-white px-6 py-2 rounded-lg text-sm font-bold shadow-[0_0_10px_rgba(16,185,129,0.2)] hover:bg-emerald-500 transition">
+                                                Marcar Ingreso
+                                            </button>
+                                        )}
+                                        {visit.status === 'Ingresó' && (
+                                            <button onClick={() => updateVisitStatus(visit.id, 'Salió')} className="w-full md:w-auto bg-gray-700 text-white px-6 py-2 rounded-lg text-sm font-bold hover:bg-gray-600 transition">
+                                                Marcar Salida
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                            {filteredVisits.length === 0 && <p className="text-center text-gray-600 py-8">No se encontraron autorizaciones activas.</p>}
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function StatusBadge({ status }) {
+            const styles = {
+                'Pendiente': 'bg-blue-900/30 text-blue-400 border-blue-800/50',
+                'Esperando Aprobación': 'bg-orange-900/30 text-orange-400 border-orange-800/50 animate-pulse',
+                'Ingresó': 'bg-emerald-900/30 text-emerald-400 border-emerald-800/50',
+                'Salió': 'bg-gray-800 text-gray-400 border-gray-700',
+                'Rechazado': 'bg-red-900/30 text-red-400 border-red-800/50'
+            };
+            
+            return (
+                <span className={`px-3 py-1 rounded-md text-xs font-bold border tracking-wide uppercase ${styles[status] || 'bg-gray-800 text-gray-400'}`}>
+                    {status}
+                </span>
+            );
+        }
+
+        // Renderizar la aplicación en el div con id "root"
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<AccessControlDarkApp />);
+    </script>
+</body>
+</html>
