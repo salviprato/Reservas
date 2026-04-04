@@ -1,1867 +1,241 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reserva de Canchas - Complejo Modular</title>
-    <style>
-        body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            background-color: #171d24; 
-            color: #ffffff; 
-            margin: 0; 
-            padding: 20px; 
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        .controles-vista { display: flex; gap: 15px; margin-bottom: 30px; }
-        .btn-vista {
-            background-color: #2c3540; color: white; border: 1px solid #44505d;
-            padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold;
-        }
-        .btn-vista.activo { background-color: #3b82f6; border-color: #3b82f6; }
+import React, { useState, useEffect } from 'react';
+// Importaciones estándar de Firebase para entornos Node/React
+import { initializeApp } from "firebase/app";
+import { getFirestore, collection, addDoc, onSnapshot, doc, updateDoc, serverTimestamp } from "firebase/firestore";
 
-        /* Vista Cliente */
-        .vista-cliente {
-            background-color: #1e252d; width: 100%; max-width: 400px;
-            border-radius: 12px; padding: 20px; box-sizing: border-box;
-        }
+// 1. Configuración de Firebase (Usando las credenciales que proporcionaste)
+const firebaseConfig = {
+  apiKey: "AIzaSyAXRXx4WvjBvBWUXV-0LgOB1gOWmrVD7s4",
+  authDomain: "reservas-5ec9d.firebaseapp.com",
+  projectId: "reservas-5ec9d",
+  storageBucket: "reservas-5ec9d.firebasestorage.app",
+  messagingSenderId: "687599648901",
+  appId: "1:687599648901:web:4254769ea30997745c29ec"
+};
+
+// Inicializar Firebase
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+export default function AccessControlApp() {
+  const [activeRole, setActiveRole] = useState('propietario');
+  const [visits, setVisits] = useState([]);
+
+  // 2. Escuchar datos en tiempo real (Sustituye al estado simulado)
+  useEffect(() => {
+    // Escuchamos la colección "visitas"
+    const unsubscribe = onSnapshot(collection(db, "visitas"), (snapshot) => {
+      const visitasData = [];
+      snapshot.forEach((doc) => {
+        visitasData.push({ id: doc.id, ...doc.data() });
+      });
+      // Ordenamos para que las más nuevas salgan primero (opcional, basado en fecha/timestamp)
+      setVisits(visitasData.sort((a, b) => b.timestamp - a.timestamp));
+    });
+
+    // Limpiar la suscripción cuando el componente se desmonte
+    return () => unsubscribe();
+  }, []);
+
+  // 3. Función para agregar a Firebase
+  const addVisit = async (newVisit) => {
+    try {
+      await addDoc(collection(db, "visitas"), {
+        ...newVisit,
+        status: 'Pendiente',
+        timestamp: serverTimestamp() // Marca de tiempo del servidor
+      });
+    } catch (error) {
+      console.error("Error al autorizar la visita:", error);
+      alert("Hubo un error al guardar. Revisa tu conexión.");
+    }
+  };
+
+  // 4. Función para actualizar en Firebase
+  const updateVisitStatus = async (id, newStatus) => {
+    try {
+      await updateDoc(doc(db, "visitas", id), {
+        status: newStatus
+      });
+    } catch (error) {
+      console.error("Error al actualizar el estado:", error);
+      alert("Hubo un error al actualizar. Revisa tu conexión.");
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-100 p-6 font-sans">
+      <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-md overflow-hidden">
         
-        .calendario-strip {
-            display: flex; overflow-x: auto; gap: 10px; padding-bottom: 12px; margin-bottom: 15px; border-bottom: 1px solid #2c3540;
-        }
-        .calendario-strip::-webkit-scrollbar { height: 6px; }
-        .calendario-strip::-webkit-scrollbar-thumb { background: #44505d; border-radius: 4px; }
-        
-        .dia-item {
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            min-width: 65px; padding: 12px 8px; background-color: #242c36; border-radius: 10px;
-            cursor: pointer; border: 1px solid transparent; transition: 0.2s;
-        }
-        .dia-item:hover { background-color: #2c3540; }
-        .dia-item.activo { background-color: #3b82f6; border-color: #3b82f6; color: white; transform: scale(1.05); }
-        .dia-nombre { font-size: 0.8em; color: #9ca3af; text-transform: uppercase; font-weight: bold;}
-        .dia-item.activo .dia-nombre { color: #e5e7eb; }
-        .dia-numero { font-size: 1.4em; font-weight: bold; margin-top: 4px; }
-        
-        .dia-cerrado { opacity: 0.3; cursor: not-allowed; }
-        .dia-cerrado:hover { background-color: #242c36; }
-
-        .sub-header { display: flex; justify-content: space-between; align-items: center; color: #9ca3af; font-size: 0.9em; padding-bottom: 10px; border-bottom: 1px solid #2c3540; margin-bottom: 10px; font-weight: bold;}
-        
-        #lista-horarios { max-height: 500px; overflow-y: auto; padding-right: 5px; }
-        #lista-horarios::-webkit-scrollbar { width: 6px; }
-        #lista-horarios::-webkit-scrollbar-thumb { background: #44505d; border-radius: 4px; }
-
-        .turno-item { display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid #2c3540; cursor: pointer; transition: 0.2s; }
-        .turno-item:hover { background-color: #242c36; }
-        .punto-verde { height: 10px; width: 10px; background-color: #10b981; border-radius: 50%; margin-right: 15px; min-width: 10px; }
-        .hora { font-weight: bold; margin-right: 8px; }
-        .texto-disponible { color: #d1d5db; font-size: 0.9em; }
-        
-        /* Modificado para coincidir con la clase visual de Orbit */
-        .texto-canchas-disp { font-size: 0.8em; color: #10b981; margin-left: auto; font-weight: bold;}
-
-        /* Vista Turnero */
-        .vista-turnero {
-            display: none; background-color: #1e252d; width: 100%; max-width: 1100px;
-            border-radius: 12px; padding: 20px; box-sizing: border-box;
-        }
-
-        .contenedor-grilla {
-            display: flex; overflow-x: auto; background: #1e252d; border: 1px solid #2c3540; 
-            border-radius: 8px; margin-top: 15px; user-select: none; position: relative;
-        }
-        .contenedor-grilla::-webkit-scrollbar { height: 8px; }
-        .contenedor-grilla::-webkit-scrollbar-thumb { background: #44505d; border-radius: 4px; }
-        
-        .tarjeta-reserva-grilla {
-            background-color: #a7f3d0; 
-            color: #064e3b; 
-            border-left: 5px solid #10b981; 
-            transition: 0.1s;
-        }
-        .tarjeta-reserva-grilla:hover { filter: brightness(1.05); z-index: 50 !important;}
-        .tarjeta-reserva-grilla.fijo { background-color: #c4b5fd; border-left: 5px solid #8b5cf6; color: #2e1065;}
-        
-        .celda-vacia-hover { transition: background-color 0.1s; }
-        .celda-vacia-hover:hover { background-color: rgba(59, 130, 246, 0.15); }
-
-        /* LÍNEA DE TIEMPO ACTUAL (AZUL) */
-        #linea-tiempo-actual {
-            position: absolute; left: 55px; right: 0; height: 2px;
-            background-color: #3b82f6; z-index: 20; display: none; pointer-events: none;
-        }
-        #linea-tiempo-actual::before {
-            content: ''; position: absolute; left: -4px; top: -4px;
-            width: 10px; height: 10px; border-radius: 50%; background-color: #3b82f6;
-        }
-
-        /* Modales */
-        .modal-overlay {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.7); justify-content: center; align-items: center; z-index: 1000;
-        }
-        .modal-content {
-            background: #1e252d; padding: 25px; border-radius: 12px; width: 90%; max-width: 380px; max-height: 90vh; overflow-y: auto;
-            display: flex; flex-direction: column; gap: 12px; border: 1px solid #44505d; text-align: center;
-        }
-
-        #modal-finanzas .modal-content, #modal-acciones .modal-content {
-            max-width: 580px; max-height: 90vh; overflow-y: auto;
-        }
-
-        .input-form {
-            padding: 10px; border-radius: 6px; border: 1px solid #44505d; background-color: #171d24; 
-            color: white; color-scheme: dark; font-family: inherit; width: 100%; box-sizing: border-box;
-        }
-        .btn-modal { padding: 12px; border-radius: 6px; border: none; font-weight: bold; cursor: pointer; color: white; font-size: 1em; transition: 0.2s; width: 100%; box-sizing: border-box;}
-        
-        .btn-whatsapp { background-color: #25D366; color: #171d24; } .btn-whatsapp:hover { background-color: #1DA851; }
-        .btn-guardar { background-color: #10b981; } .btn-guardar:hover { background-color: #059669; }
-        .btn-fijo { background-color: #8b5cf6; color: white; } .btn-fijo:hover { background-color: #7c3aed; }
-        .btn-eliminar { background-color: #ef4444; } .btn-eliminar:hover { background-color: #dc2626; }
-        .btn-cerrar { background-color: #4b5563; margin-top: 10px;}
-        .btn-gasto { background-color: #4b5563; } .btn-gasto:hover { background-color: #374151; }
-        .btn-balance { background-color: #4b5563; color: #ffffff; } .btn-balance:hover { background-color: #374151; }
-        .btn-stock { background-color: #4b5563; padding: 4px 8px; font-size: 0.8em; } .btn-stock:hover { background-color: #374151; }
-
-        .scroll-interno::-webkit-scrollbar { width: 6px; }
-        .scroll-interno::-webkit-scrollbar-thumb { background: #44505d; border-radius: 4px; }
-        
-        table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
-        th { padding: 8px; text-align: left; border-bottom: 2px solid #44505d; color: #9ca3af; }
-        td { padding: 8px; border-bottom: 1px solid #2c3540; }
-
-        /* Estilos Acordeón Finanzas */
-        .seccion-acordeon { border: 1px solid #2c3540; border-radius: 8px; margin-bottom: 15px; overflow: hidden; background: #171d24;}
-        .header-acordeon { 
-            display: flex; justify-content: space-between; align-items: center; padding: 12px 15px; 
-            background: #242c36; cursor: pointer; font-weight: bold; font-size: 1.05em; user-select: none;
-            color: #d1d5db;
-        }
-        .header-acordeon:hover { background: #2c3540; }
-        .contenido-acordeon { padding: 15px; display: none; }
-        .contenido-acordeon.abierto { display: block; border-top: 1px solid #2c3540;}
-
-        .text-neutral-main { color: #ffffff; }
-        .text-neutral-sub { color: #9ca3af; }
-        .text-neutral-bold { color: #d1d5db; font-weight: bold; }
-    </style>
-</head>
-<body>
-
-    <div class="controles-vista">
-        <button id="btn-cliente" class="btn-vista activo" onclick="window.cambiarVista('cliente')">⚽ Vista Jugadores</button>
-        <button id="btn-turnero" class="btn-vista" onclick="window.cambiarVista('turnero')">💻 Vista Turnero</button>
-    </div>
-
-    <div id="pantalla-cliente" class="vista-cliente">
-        <h2 style="margin-top: 0; margin-bottom: 20px;">Reserva de Canchas</h2>
-        <div id="calendario-cliente" class="calendario-strip"></div>
-        <div class="sub-header">
-            <span>Horarios Disponibles</span>
-            <span>Complejo</span>
+        {/* Selector de Roles */}
+        <div className="bg-gray-800 p-4 text-white flex justify-between items-center">
+          <h1 className="text-xl font-bold">Control de Acceso VIP</h1>
+          <div className="space-x-2">
+            <button 
+              className={`px-4 py-2 rounded ${activeRole === 'propietario' ? 'bg-blue-600' : 'bg-gray-600'}`}
+              onClick={() => setActiveRole('propietario')}
+            >
+              Vista Propietario
+            </button>
+            <button 
+              className={`px-4 py-2 rounded ${activeRole === 'guardia' ? 'bg-green-600' : 'bg-gray-600'}`}
+              onClick={() => setActiveRole('guardia')}
+            >
+              Vista Guardia
+            </button>
+          </div>
         </div>
-        <div id="lista-horarios">Cargando horarios...</div>
-    </div>
 
-    <div id="pantalla-turnero" class="vista-turnero">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <h2 style="margin: 0;">Panel de Control Modular</h2>
-            <div style="display: flex; gap: 15px;">
-                <button onclick="window.abrirModalFinanzas()" style="background: none; border: none; font-size: 1.5em; cursor: pointer; color: #9ca3af; transition: 0.2s;" onmouseover="this.style.color='white'" onmouseout="this.style.color='#9ca3af'" title="Finanzas e Inventario">💰</button>
-                <button onclick="window.abrirModalMetricas()" style="background: none; border: none; font-size: 1.5em; cursor: pointer; color: #9ca3af; transition: 0.2s;" onmouseover="this.style.color='white'" onmouseout="this.style.color='#9ca3af'" title="Métricas">📊</button>
-                <button onclick="window.abrirModalConfig()" style="background: none; border: none; font-size: 1.5em; cursor: pointer; color: #9ca3af; transition: 0.2s;" onmouseover="this.style.color='white'" onmouseout="this.style.color='#9ca3af'" title="Configuración">⚙️</button>
-            </div>
+        {/* Renderizado Condicional de Vistas */}
+        <div className="p-6">
+          {activeRole === 'propietario' ? (
+            <OwnerView addVisit={addVisit} visits={visits} />
+          ) : (
+            <GuardView visits={visits} updateVisitStatus={updateVisitStatus} />
+          )}
         </div>
-        <div id="calendario-turnero" class="calendario-strip"></div>
-        <div id="lista-reservas-turnero"></div>
+      </div>
     </div>
+  );
+}
 
-    <div id="modal-reserva-cliente" class="modal-overlay">
-        <div class="modal-content">
-            <h3 style="margin: 0; margin-bottom: 5px;">Agendar Partido</h3>
-            <p style="margin: 0; color: #9ca3af; margin-bottom: 15px;">Fecha: <strong id="reserva-fecha-display" style="color:white;"></strong> | Hora: <strong id="reserva-hora-display" style="color:white;"></strong></p>
-            
-            <div style="text-align: left; display: flex; flex-direction: column; gap: 12px;">
-                <div>
-                    <label style="font-size: 0.9em; color: #d1d5db; font-weight: bold;">Modalidad del Partido:</label>
-                    <select id="select-modalidad" class="input-form" style="margin-top: 5px;" onchange="window.actualizarOpcionesCanchas()"></select>
-                    <p id="mensaje-disponibilidad" style="color: #ef4444; font-size: 0.85em; font-weight: bold; margin: 5px 0 0 0; display: none;">No hay canchas disponibles para esta modalidad.</p>
-                </div>
-                
-                <div style="display: none;">
-                    <select id="select-cancha-modal" class="input-form"></select>
-                </div>
+// ==========================================
+// VISTA DEL PROPIETARIO
+// ==========================================
+function OwnerView({ addVisit, visits }) {
+  const [formData, setFormData] = useState({ visitorName: '', dni: '', date: '' });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-                <div>
-                    <label style="font-size: 0.9em; color: #d1d5db; font-weight: bold;">Nombre del Equipo / Jugador:</label>
-                    <input type="text" id="input-nombre-cliente" class="input-form" placeholder="Ej: Los Pibes FC" style="margin-top: 5px;">
-                </div>
-                <div>
-                    <label style="font-size: 0.9em; color: #d1d5db; font-weight: bold;">Teléfono (WhatsApp):</label>
-                    <input type="tel" id="input-telefono-cliente" class="input-form" placeholder="Ej: 351..." style="margin-top: 5px;">
-                </div>
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!formData.visitorName || !formData.dni) return;
+    
+    setIsSubmitting(true);
+    await addVisit({ ...formData, ownerName: 'Lote 14 - Familia Pérez' });
+    setIsSubmitting(false);
+    setFormData({ visitorName: '', dni: '', date: '' }); // Limpiar formulario
+  };
+
+  return (
+    <div>
+      <h2 className="text-2xl font-bold mb-6 text-gray-800">Panel del Propietario</h2>
+      
+      <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 mb-8">
+        <h3 className="font-semibold mb-4 text-blue-800">Autorizar Nueva Visita</h3>
+        <form onSubmit={handleSubmit} className="flex flex-col md:flex-row gap-4 items-end">
+          <div className="flex-1 w-full">
+            <label className="block text-sm text-gray-600 mb-1">Nombre del Visitante</label>
+            <input type="text" className="w-full p-2 border rounded" 
+              value={formData.visitorName} onChange={e => setFormData({...formData, visitorName: e.target.value})} required />
+          </div>
+          <div className="flex-1 w-full">
+            <label className="block text-sm text-gray-600 mb-1">DNI</label>
+            <input type="text" className="w-full p-2 border rounded" 
+              value={formData.dni} onChange={e => setFormData({...formData, dni: e.target.value})} required />
+          </div>
+          <div className="flex-1 w-full">
+            <label className="block text-sm text-gray-600 mb-1">Fecha</label>
+            <input type="date" className="w-full p-2 border rounded" 
+              value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} required />
+          </div>
+          <button type="submit" disabled={isSubmitting} className="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 disabled:opacity-50 w-full md:w-auto">
+            {isSubmitting ? 'Guardando...' : 'Autorizar'}
+          </button>
+        </form>
+      </div>
+
+      <h3 className="font-semibold mb-4 text-gray-700">Mis Autorizaciones</h3>
+      <div className="space-y-3">
+        {visits.filter(v => v.ownerName === 'Lote 14 - Familia Pérez').map(visit => (
+          <div key={visit.id} className="flex justify-between items-center p-3 border rounded bg-white">
+            <div>
+              <p className="font-medium">{visit.visitorName} <span className="text-sm text-gray-500">(DNI: {visit.dni})</span></p>
+              <p className="text-sm text-gray-500">Fecha: {visit.date}</p>
             </div>
-
-            <button id="btn-guardar-reserva" class="btn-modal btn-guardar" style="margin-top: 20px;" onclick="window.confirmarReservaCliente()">Confirmar Turno</button>
-            <button class="btn-modal btn-cerrar" style="margin-top: 0;" onclick="window.cerrarModalReservaCliente()">Cancelar</button>
-        </div>
+            <StatusBadge status={visit.status} />
+          </div>
+        ))}
+        {visits.filter(v => v.ownerName === 'Lote 14 - Familia Pérez').length === 0 && (
+          <p className="text-gray-500 text-sm">Aún no tienes visitas autorizadas.</p>
+        )}
+      </div>
     </div>
+  );
+}
 
-    <div id="modal-reserva-admin" class="modal-overlay" style="z-index: 1050;">
-        <div class="modal-content">
-            <h3 style="margin: 0; margin-bottom: 5px;">Agendar Turno (Admin)</h3>
-            <p style="margin: 0; color: #9ca3af; margin-bottom: 15px;">Fecha: <strong id="admin-fecha-display" style="color:white;"></strong> | Hora: <strong id="admin-hora-display" style="color:white;"></strong></p>
-            
-            <div style="text-align: left; display: flex; flex-direction: column; gap: 12px;">
-                <div style="display: flex; gap: 10px;">
-                    <div style="flex: 1;">
-                        <label style="font-size: 0.9em; color: #d1d5db; font-weight: bold;">Tipo de Evento:</label>
-                        <select id="select-evento-admin" class="input-form" style="margin-top: 5px;">
-                            <option value="Normal">Reserva Normal</option>
-                            <option value="Clases">Clase / Profe</option>
-                            <option value="Torneo">Torneo 🏆</option>
-                            <option value="Especial">Ocasión Especial ⭐</option>
-                        </select>
-                    </div>
-                    <div style="flex: 1;">
-                        <label style="font-size: 0.9em; color: #d1d5db; font-weight: bold;">Duración:</label>
-                        <select id="select-duracion-admin" class="input-form" style="margin-top: 5px;" onchange="window.actualizarOpcionesCanchasAdmin()">
-                            <option value="30">30 Min</option>
-                            <option value="60">60 Min (1h)</option>
-                            <option value="90">90 Min (1.5h)</option>
-                            <option value="120">120 Min (2h)</option>
-                            <option value="150">150 Min (2.5h)</option>
-                            <option value="180">180 Min (3h)</option>
-                        </select>
-                    </div>
-                </div>
+// ==========================================
+// VISTA DEL GUARDIA
+// ==========================================
+function GuardView({ visits, updateVisitStatus }) {
+  const [searchTerm, setSearchTerm] = useState('');
 
-                <div>
-                    <label style="font-size: 0.9em; color: #d1d5db; font-weight: bold;">Modalidad:</label>
-                    <select id="select-modalidad-admin" class="input-form" style="margin-top: 5px;" onchange="window.actualizarOpcionesCanchasAdmin()"></select>
-                    <p id="mensaje-disponibilidad-admin" style="color: #ef4444; font-size: 0.85em; font-weight: bold; margin: 5px 0 0 0; display: none;">Cancha ocupada para la duración requerida.</p>
-                </div>
-                
-                <div style="display: none;">
-                    <select id="select-cancha-admin" class="input-form"></select>
-                </div>
+  // Filtrar de forma segura (asegurando que los campos existan)
+  const filteredVisits = visits.filter(v => 
+    (v.dni && v.dni.includes(searchTerm)) || 
+    (v.visitorName && v.visitorName.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
 
-                <div>
-                    <label style="font-size: 0.9em; color: #d1d5db; font-weight: bold;">Nombre / Título:</label>
-                    <input type="text" id="input-nombre-admin" class="input-form" placeholder="Nombre jugador o título evento" style="margin-top: 5px;">
-                </div>
-                <div>
-                    <label style="font-size: 0.9em; color: #d1d5db; font-weight: bold;">Teléfono (Opcional):</label>
-                    <input type="tel" id="input-telefono-admin" class="input-form" placeholder="Ej: 351..." style="margin-top: 5px;">
-                </div>
-            </div>
+  return (
+    <div>
+      <h2 className="text-2xl font-bold mb-6 text-gray-800">Panel de Control de Guardia</h2>
+      
+      <div className="mb-6">
+        <input 
+          type="text" 
+          placeholder="Buscar por DNI o Apellido..." 
+          className="w-full p-3 border rounded shadow-sm"
+          value={searchTerm}
+          onChange={e => setSearchTerm(e.target.value)}
+        />
+      </div>
 
-            <button id="btn-guardar-reserva-admin" class="btn-modal btn-guardar" style="margin-top: 20px;" onclick="window.confirmarReservaAdmin()">Guardar Evento</button>
-            <button class="btn-modal btn-cerrar" style="margin-top: 0;" onclick="window.cerrarModalReservaAdmin()">Cancelar</button>
-        </div>
-    </div>
-
-    <div id="modal-acciones" class="modal-overlay">
-        <div class="modal-content scroll-interno" style="max-width: 480px;">
-            <h3 style="margin: 0; border-bottom: 1px solid #44505d; padding-bottom: 10px; color: #ffffff;" id="titulo-modal-acciones">Gestión de Turno</h3>
-            
-            <div class="seccion-acordeon" style="margin-top: 10px;">
-                <div class="header-acordeon" onclick="window.toggleAcordeon('ac-consumos-turno')" style="font-size: 0.95em; padding: 10px;">
-                    <span>🛒 Añadir Producto (Descuenta Stock)</span> <span id="flecha-ac-consumos-turno">🔽</span>
-                </div>
-                <div id="ac-consumos-turno" class="contenido-acordeon" style="padding: 10px;">
-                    <div style="display: flex; gap: 8px;">
-                        <select id="select-consumo-turno" class="input-form" style="flex: 1;"></select>
-                        <button class="btn-modal btn-gasto" style="width: auto; padding: 10px 15px;" onclick="window.agregarConsumoTurno()">Añadir</button>
-                    </div>
-                    <ul id="lista-consumos-turno" class="scroll-interno" style="list-style: none; padding: 0; margin: 10px 0 0 0; max-height: 120px; overflow-y: auto; font-size: 0.9em;"></ul>
-                </div>
-            </div>
-
-            <div style="background: #242c36; padding: 15px; border-radius: 8px; border: 1px solid #2c3540; text-align: left; margin-bottom: 10px;">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.9em; color: #9ca3af;">
-                    <span>Precio Cancha (Proporcional):</span> <span id="res-precio-cancha" class="text-neutral-main">$0</span>
-                </div>
-                <div style="display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.9em; color: #9ca3af;">
-                    <span>Total Consumos:</span> <span id="res-precio-consumos" class="text-neutral-main">$0</span>
-                </div>
-                <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 1.2em; color: #ffffff; margin-bottom: 15px; border-top: 1px solid #44505d; padding-top: 10px;">
-                    <span>A COBRAR:</span> <span id="res-precio-total">$0</span>
-                </div>
-
-                <label style="font-size: 0.85em; color: #d1d5db;">Monto abonado por el cliente:</label>
-                <div style="display: flex; gap: 10px; margin-top: 5px;">
-                    <div style="flex: 1;">
-                        <small style="color: #9ca3af;">En Efectivo ($)</small>
-                        <input type="number" id="pago-efectivo" class="input-form" placeholder="0" oninput="window.calcularFaltante()">
-                    </div>
-                    <div style="flex: 1;">
-                        <small style="color: #9ca3af;">En Transferencia ($)</small>
-                        <input type="number" id="pago-transferencia" class="input-form" placeholder="0" oninput="window.calcularFaltante()">
-                    </div>
-                </div>
-                <div style="text-align: right; margin-top: 8px; font-size: 0.9em; font-weight: bold; color: #d1d5db;" id="txt-faltante">Falta cobrar: $0</div>
-
-                <button class="btn-modal btn-guardar" style="margin-top: 15px;" onclick="window.cobrarTurno()">Guardar Pagos</button>
-            </div>
-
-            <div style="display: flex; flex-wrap: wrap; gap: 8px; border-top: 1px solid #44505d; padding-top: 15px;">
-                <button class="btn-modal btn-whatsapp" id="btn-whatsapp" onclick="window.enviarWhatsApp()" style="flex: 1; min-width: 45%; font-size: 0.85em; color:#171d24;">💬 WhatsApp</button>
-                <button class="btn-modal btn-fijo" id="btn-toggle-fijo" onclick="window.hacerTurnoFijo()" style="flex: 1; min-width: 45%; font-size: 0.85em;">📌 Hacer Fijo</button>
-                <button class="btn-modal btn-eliminar" onclick="window.accionEliminar()" style="flex: 1; min-width: 45%; font-size: 0.85em;">🗑️ Cancelar Evento</button>
-            </div>
-            <button class="btn-modal btn-cerrar" onclick="window.cerrarModalAcciones()">Cerrar Gestión</button>
-        </div>
-    </div>
-
-    <div id="modal-finanzas" class="modal-overlay">
-        <div class="modal-content scroll-interno"> 
-            <h3 style="margin: 0; margin-bottom: 15px; border-bottom: 1px solid #44505d; padding-bottom: 10px;">Finanzas e Inventario</h3>
-            
-            <div style="text-align: left;">
-                
-                <div class="seccion-acordeon">
-                    <div class="header-acordeon" onclick="window.toggleAcordeon('ac-inv')">
-                        <span>📦 Inventario y Stock</span> <span id="flecha-ac-inv">🔽</span>
-                    </div>
-                    <div id="ac-inv" class="contenido-acordeon">
-                        <div style="display: flex; gap: 8px; margin-bottom: 8px;">
-                            <input type="text" id="inv-nombre" class="input-form" placeholder="Producto" style="flex: 2;">
-                            <select id="inv-categoria" class="input-form" style="flex: 2;">
-                                <option value="" disabled selected>Categoría...</option>
-                                <option value="Bebidas">Bebidas</option>
-                                <option value="Comida">Comida</option>
-                                <option value="Accesorios">Accesorios</option>
-                            </select>
-                        </div>
-                        <div style="display: flex; gap: 8px; margin-bottom: 15px;">
-                            <input type="number" id="inv-stock" class="input-form" placeholder="Stock Inicial" style="flex: 1;" min="0">
-                            <input type="number" id="inv-costo" class="input-form" placeholder="Costo Unit. $" style="flex: 1;" min="0">
-                            <input type="number" id="inv-precio" class="input-form" placeholder="Precio Venta $" style="flex: 1;" min="0">
-                        </div>
-                        <button class="btn-modal btn-gasto" onclick="window.agregarInventario()" style="margin-bottom: 20px;">Añadir al Inventario</button>
-                        
-                        <div class="scroll-interno" style="max-height: 200px; overflow-y: auto; border: 1px solid #2c3540; border-radius: 6px; padding: 5px; background: #171d24;">
-                            <table>
-                                <thead><tr><th>Producto</th><th style="text-align: center;">Stock</th><th style="text-align: right;">Precio</th><th style="text-align: center;">Acciones</th></tr></thead>
-                                <tbody id="tabla-inventario"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="seccion-acordeon">
-                    <div class="header-acordeon" onclick="window.toggleAcordeon('ac-gastos')">
-                        <span>💸 Gastos Externos</span> <span id="flecha-ac-gastos">🔽</span>
-                    </div>
-                    <div id="ac-gastos" class="contenido-acordeon">
-                        <div style="display: flex; gap: 8px; margin-bottom: 10px;">
-                            <input type="text" id="gasto-titulo" class="input-form" placeholder="Título (Ej: Luz, Pelotas)" style="flex: 1;">
-                            <input type="number" id="gasto-importe" class="input-form" placeholder="Importe Gastado $" style="flex: 1;">
-                        </div>
-                        <div style="margin-bottom: 15px;">
-                            <input type="text" id="gasto-desc" class="input-form" placeholder="Descripción corta (Opcional)">
-                        </div>
-                        <button class="btn-modal btn-gasto" onclick="window.agregarGasto()" style="margin-bottom: 20px;">Registrar Gasto</button>
-                        <div class="scroll-interno" style="max-height: 150px; overflow-y: auto; border: 1px solid #2c3540; border-radius: 6px; padding: 5px; background: #171d24;">
-                            <table>
-                                <thead><tr><th>Detalle del Gasto</th><th style="text-align: right;">Importe</th><th style="text-align: center;">Borrar</th></tr></thead>
-                                <tbody id="tabla-gastos"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="seccion-acordeon">
-                    <div class="header-acordeon" onclick="window.toggleAcordeon('ac-ingresos')">
-                        <span>📈 Ingresos y Ventas</span> <span id="flecha-ac-ingresos">🔽</span>
-                    </div>
-                    <div id="ac-ingresos" class="contenido-acordeon">
-                        <p style="font-size: 0.85em; color: #9ca3af; margin-top: 0;">Pagos de turnos y ventas de mostrador.</p>
-                        
-                        <div style="border: 1px solid #2c3540; padding: 10px; border-radius: 8px; margin-bottom: 15px;">
-                            <label style="font-size: 0.85em; color: #d1d5db; font-weight: bold;">Venta Rápida (Descuenta Stock):</label>
-                            <div style="display: flex; gap: 8px; margin-top: 5px; margin-bottom: 5px;">
-                                <select id="ingreso-select-prod" class="input-form" style="flex: 2;"></select>
-                            </div>
-                            <div style="display: flex; gap: 8px;">
-                                <input type="number" id="ingreso-efectivo-prod" class="input-form" placeholder="Efectivo $" style="flex: 1;">
-                                <input type="number" id="ingreso-transferencia-prod" class="input-form" placeholder="Transf. $" style="flex: 1;">
-                            </div>
-                            <button class="btn-modal btn-gasto" onclick="window.venderProductoMostrador()" style="margin-top: 10px; padding: 8px;">Vender Producto</button>
-                        </div>
-
-                        <div style="border: 1px solid #2c3540; padding: 10px; border-radius: 8px; margin-bottom: 15px;">
-                            <label style="font-size: 0.85em; color: #d1d5db; font-weight: bold;">Ingreso Manual Libre:</label>
-                            <div style="display: flex; gap: 8px; margin-top: 5px;">
-                                <input type="text" id="ingreso-titulo" class="input-form" placeholder="Detalle..." style="flex: 2;">
-                            </div>
-                            <div style="display: flex; gap: 8px; margin-top: 5px;">
-                                <input type="number" id="ingreso-efectivo" class="input-form" placeholder="Efectivo $" style="flex: 1;">
-                                <input type="number" id="ingreso-transferencia" class="input-form" placeholder="Transf. $" style="flex: 1;">
-                            </div>
-                            <button class="btn-modal btn-gasto" onclick="window.agregarIngresoLibre()" style="margin-top: 10px; padding: 8px;">Registrar Ingreso</button>
-                        </div>
-
-                        <div class="scroll-interno" style="max-height: 150px; overflow-y: auto; border: 1px solid #2c3540; border-radius: 6px; padding: 5px; background: #171d24;">
-                            <table>
-                                <thead><tr><th>Detalle</th><th style="text-align: right;">Efectivo</th><th style="text-align: right;">Transf.</th><th style="text-align: center;">Borrar</th></tr></thead>
-                                <tbody id="tabla-ingresos"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="seccion-acordeon">
-                    <div class="header-acordeon" onclick="window.toggleAcordeon('ac-balances')">
-                        <span>📊 Balance de Ganancias</span> <span id="flecha-ac-balances">🔽</span>
-                    </div>
-                    <div id="ac-balances" class="contenido-acordeon">
-                        <p style="font-size: 0.85em; color: #9ca3af; margin-top: 0;">(Ingresos Turnos + Ventas) - (Gastos + Costo Reposición Stock).</p>
-                        <div style="display: flex; gap: 8px; margin-bottom: 15px;">
-                            <input type="text" id="balance-titulo" class="input-form" placeholder="Nombre (Ej: Cierre Mes)" style="flex: 2;">
-                            <select id="balance-periodo" class="input-form" style="flex: 2;">
-                                <option value="" disabled selected>Período...</option>
-                                <option value="1">Últimas 24hs</option>
-                                <option value="7">Última Semana</option>
-                                <option value="30">Último Mes</option>
-                                <option value="todo">Historial Completo</option>
-                            </select>
-                        </div>
-                        <button class="btn-modal btn-balance" onclick="window.generarBalance()" style="margin-bottom: 20px;">Calcular y Guardar Cierre</button>
-                        <div class="scroll-interno" style="max-height: 200px; overflow-y: auto; border: 1px solid #2c3540; border-radius: 6px; padding: 5px; background: #171d24;">
-                            <table>
-                                <thead>
-                                    <tr><th>Cierre / Período</th><th style="text-align: right;">Ingresos</th><th style="text-align: right;">Gastos</th><th style="text-align: right;">Neta</th><th style="text-align: center;">Borrar</th></tr>
-                                </thead>
-                                <tbody id="tabla-balances"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="seccion-acordeon">
-                    <div class="header-acordeon" onclick="window.toggleAcordeon('ac-historial')">
-                        <span>📜 Historial de Transacciones</span> <span id="flecha-ac-historial">🔽</span>
-                    </div>
-                    <div id="ac-historial" class="contenido-acordeon">
-                        <div class="scroll-interno" style="max-height: 250px; overflow-y: auto; border: 1px solid #2c3540; border-radius: 6px; padding: 5px; background: #171d24;">
-                            <table>
-                                <thead>
-                                    <tr><th>Fecha</th><th>Detalle</th><th style="text-align: right;">Monto</th></tr>
-                                </thead>
-                                <tbody id="tabla-historial"></tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-            <button class="btn-modal btn-cerrar" style="margin-top: 20px;" onclick="window.cerrarModalFinanzas()">Cerrar Finanzas</button>
-        </div>
-    </div>
-
-    <div id="modal-editar-precio" class="modal-overlay" style="z-index: 1100;">
-        <div class="modal-content" style="max-width: 300px;">
-            <h3 style="margin: 0; color: #ffffff;">Editar Precio</h3>
-            <p id="lbl-editar-prod" style="color: #9ca3af; margin: 5px 0 15px 0; font-weight: bold;"></p>
-            <input type="hidden" id="editar-id-prod">
-            
-            <div style="text-align: left;">
-                <label style="font-size: 0.85em; color: #d1d5db;">Nuevo Precio de Venta ($):</label>
-                <input type="number" id="editar-precio-nuevo" class="input-form" min="0" placeholder="Ej: 1500" style="margin-top: 4px;">
+      <div className="space-y-4">
+        {filteredVisits.map(visit => (
+          <div key={visit.id} className="border rounded-lg p-4 bg-white shadow-sm flex flex-col md:flex-row justify-between items-center gap-4">
+            <div className="flex-1">
+              <h3 className="font-bold text-lg">{visit.visitorName}</h3>
+              <p className="text-gray-600">DNI: {visit.dni} | Fecha: {visit.date}</p>
+              <p className="text-sm text-blue-600 font-medium">Autoriza: {visit.ownerName}</p>
             </div>
             
-            <button class="btn-modal btn-guardar" style="margin-top: 15px; background-color:#3b82f6;" onclick="window.confirmarEditarPrecio()">Guardar Precio</button>
-            <button class="btn-modal btn-cerrar" onclick="window.cerrarModalEditarPrecio()">Cancelar</button>
-        </div>
-    </div>
-
-    <div id="modal-reponer-stock" class="modal-overlay" style="z-index: 1100;">
-        <div class="modal-content" style="max-width: 300px;">
-            <h3 style="margin: 0; color: #ffffff;">Reponer Stock</h3>
-            <p id="lbl-reponer-prod" style="color: #9ca3af; margin: 5px 0 15px 0; font-weight: bold;"></p>
-            <input type="hidden" id="reponer-id-prod">
-            
-            <div style="text-align: left; display: flex; flex-direction: column; gap: 10px;">
-                <div>
-                    <label style="font-size: 0.85em; color: #d1d5db;">Cantidad Comprada:</label>
-                    <input type="number" id="reponer-cantidad" class="input-form" min="1" placeholder="Ej: 10" style="margin-top: 4px;">
-                </div>
-                <div>
-                    <label style="font-size: 0.85em; color: #d1d5db;">Costo Unitario ($):</label>
-                    <input type="number" id="reponer-costo" class="input-form" min="0" placeholder="Costo por unidad" style="margin-top: 4px;">
-                </div>
-                <p style="font-size: 0.75em; color: #9ca3af; margin: 0;">El costo total se registrará automáticamente como un Gasto Externo.</p>
+            <div className="flex items-center gap-4">
+              <StatusBadge status={visit.status} />
+              
+              <div className="flex flex-col gap-2">
+                {visit.status === 'Pendiente' && (
+                  <button onClick={() => updateVisitStatus(visit.id, 'Ingresó')} className="bg-green-500 text-white px-4 py-1 rounded text-sm hover:bg-green-600 transition-colors">
+                    Registrar Ingreso
+                  </button>
+                )}
+                {visit.status === 'Ingresó' && (
+                  <button onClick={() => updateVisitStatus(visit.id, 'Salió')} className="bg-gray-500 text-white px-4 py-1 rounded text-sm hover:bg-gray-600 transition-colors">
+                    Registrar Salida
+                  </button>
+                )}
+              </div>
             </div>
-            
-            <button class="btn-modal btn-gasto" style="margin-top: 15px;" onclick="window.confirmarReposicionStock()">Reponer y Registrar Gasto</button>
-            <button class="btn-modal btn-cerrar" onclick="window.cerrarModalReposicion()">Cancelar</button>
-        </div>
+          </div>
+        ))}
+        
+        {filteredVisits.length === 0 && (
+          <p className="text-center text-gray-500 py-8">No se encontraron autorizaciones en la base de datos.</p>
+        )}
+      </div>
     </div>
-
-    <div id="modal-config" class="modal-overlay">
-        <div class="modal-content">
-            <h3 style="margin: 0; margin-bottom: 15px; border-bottom: 1px solid #44505d; padding-bottom: 10px;">⚙️ Configuración del Complejo</h3>
-            <div style="text-align: left; display: flex; flex-direction: column; gap: 12px;">
-                <div style="display: flex; gap: 10px; justify-content: space-between;">
-                    <div style="flex: 1;"><label style="font-size: 0.9em; color: #d1d5db;">Abre:</label><input type="time" id="input-primer-turno" class="input-form" style="margin-top: 4px;"></div>
-                    <div style="flex: 1;"><label style="font-size: 0.9em; color: #d1d5db;">Cierra:</label><input type="time" id="input-ultimo-turno" class="input-form" style="margin-top: 4px;"></div>
-                </div>
-                
-                <div style="display: flex; gap: 10px; justify-content: space-between;">
-                    <div style="flex: 1;"><label style="font-size: 0.9em; color: #d1d5db;">Duración Standard:</label>
-                        <select id="input-duracion" class="input-form" style="margin-top: 4px;">
-                            <option value="60">60 Min (1h)</option>
-                            <option value="90">90 Min (1.5h)</option>
-                            <option value="120">120 Min (2h)</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div style="border-top: 1px solid #44505d; padding-top: 10px; margin-top: 5px;">
-                    <label style="font-size: 0.9em; color: #3b82f6; font-weight: bold;">Precios por Modalidad ($)</label>
-                    <div style="display: flex; gap: 10px; margin-top: 8px;">
-                        <div style="flex: 1;"><label style="font-size: 0.85em; color: #d1d5db;">F7:</label><input type="number" id="input-precio-f7" step="500" class="input-form" style="margin-top: 4px;"></div>
-                        <div style="flex: 1;"><label style="font-size: 0.85em; color: #d1d5db;">F9:</label><input type="number" id="input-precio-f9" step="500" class="input-form" style="margin-top: 4px;"></div>
-                        <div style="flex: 1;"><label style="font-size: 0.85em; color: #d1d5db;">F11:</label><input type="number" id="input-precio-f11" step="500" class="input-form" style="margin-top: 4px;"></div>
-                    </div>
-                </div>
-                
-                <div style="border-top: 1px solid #44505d; padding-top: 10px;">
-                    <label style="font-size: 0.9em; color: #3b82f6; font-weight: bold;">Inventario de Canchas Físicas</label>
-                    
-                    <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 10px;">
-                        <label style="font-size: 0.85em; color: #d1d5db;">Canchas F7 (Puras):</label>
-                        <input type="number" id="input-canchas-f7" min="0" max="15" class="input-form" style="width: 60px;">
-                    </div>
-                    
-                    <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 10px; background: rgba(255,255,255,0.05); padding: 5px; border-radius: 6px;">
-                        <div>
-                            <label style="font-size: 0.85em; color: #d1d5db; display: block;">Canchas F9:</label>
-                            <span style="font-size: 0.7em; color: #9ca3af;">Equivale a <input type="number" id="input-equiv-f9" min="1" max="5" value="2" style="width: 30px; background: transparent; border: 1px solid #44505d; color: white; border-radius: 4px;"> F7s</span>
-                        </div>
-                        <input type="number" id="input-canchas-f9" min="0" max="10" class="input-form" style="width: 60px;">
-                    </div>
-
-                    <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 10px; background: rgba(255,255,255,0.05); padding: 5px; border-radius: 6px;">
-                        <div>
-                            <label style="font-size: 0.85em; color: #d1d5db; display: block;">Canchas F11:</label>
-                            <span style="font-size: 0.7em; color: #9ca3af;">Equivale a <input type="number" id="input-equiv-f11" min="1" max="5" value="3" style="width: 30px; background: transparent; border: 1px solid #44505d; color: white; border-radius: 4px;"> F7s</span>
-                        </div>
-                        <input type="number" id="input-canchas-f11" min="0" max="10" class="input-form" style="width: 60px;">
-                    </div>
-                </div>
-
-                <div style="border-top: 1px solid #44505d; padding-top: 10px;">
-                    <label style="font-size: 0.9em; color: #d1d5db; font-weight: bold;">Días Abiertos:</label>
-                    <div style="display: flex; gap: 8px; justify-content: space-between; margin-top: 8px; font-size: 0.85em; color: #9ca3af;">
-                        <label><input type="checkbox" class="check-dia" value="1"> Lu</label>
-                        <label><input type="checkbox" class="check-dia" value="2"> Ma</label>
-                        <label><input type="checkbox" class="check-dia" value="3"> Mi</label>
-                        <label><input type="checkbox" class="check-dia" value="4"> Ju</label>
-                        <label><input type="checkbox" class="check-dia" value="5"> Vi</label>
-                        <label><input type="checkbox" class="check-dia" value="6"> Sa</label>
-                        <label><input type="checkbox" class="check-dia" value="0"> Do</label>
-                    </div>
-                </div>
-            </div>
-            <button class="btn-modal btn-guardar" style="margin-top: 20px;" onclick="window.guardarConfiguracion()">Guardar Todo</button>
-            <button class="btn-modal btn-cerrar" style="margin-top: 0;" onclick="window.cerrarModalConfig()">Cancelar</button>
-        </div>
-    </div>
-
-    <div id="modal-metricas" class="modal-overlay">
-        <div class="modal-content">
-            <h3 style="margin: 0; margin-bottom: 15px; border-bottom: 1px solid #44505d; padding-bottom: 10px;">📊 Partidos Jugados</h3>
-            <div id="contenido-metricas" class="scroll-interno" style="text-align: left; max-height: 350px; overflow-y: auto; padding-right: 5px;"></div>
-            <button class="btn-modal btn-cerrar" style="margin-top: 15px;" onclick="window.cerrarModalMetricas()">Cerrar</button>
-        </div>
-    </div>
-
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, onSnapshot, doc, setDoc, updateDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-
-        const firebaseConfig = {
-          apiKey: "AIzaSyAXRXx4WvjBvBWUXV-0LgOB1gOWmrVD7s4",
-          authDomain: "reservas-5ec9d.firebaseapp.com",
-          projectId: "reservas-5ec9d",
-          storageBucket: "reservas-5ec9d.firebasestorage.app",
-          messagingSenderId: "687599648901",
-          appId: "1:687599648901:web:4254769ea30997745c29ec"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-
-        let fechasValidas = [];
-        let fechaActual = new Date();
-        for (let i = 0; i <= 7; i++) {
-            let f = new Date(fechaActual); f.setDate(f.getDate() + i);
-            let anio = f.getFullYear(); let mes = (f.getMonth() + 1).toString().padStart(2, '0'); let dia = f.getDate().toString().padStart(2, '0');
-            fechasValidas.push(`${anio}-${mes}-${dia}`); 
-        }
-        let fechaSeleccionada = fechasValidas[0]; 
-
-        let primerTurno = "18:00"; 
-        let ultimoTurno = "23:00";   
-        let duracionGlobal = 60; 
-        
-        let precioF7 = "15000";
-        let precioF9 = "20000";
-        let precioF11 = "25000";
-        
-        let cantF7 = 3; let cantF9 = 1; let cantF11 = 1;
-        let equivF9 = 2; let equivF11 = 3;
-        
-        let diasAbiertosGlobal = [1, 2, 3, 4, 5, 6, 0]; 
-        
-        let reservasGlobales = [];
-        let inventarioGlobal = []; 
-        let gastosGlobal = []; 
-        let ingresosGlobal = []; 
-        let balancesGlobal = []; 
-        
-        let reservaSeleccionadaId = null; 
-        let reservaEnProcesoHora = null;
-        let columnasGrid = [];
-
-        function construirColumnas() {
-            columnasGrid = [];
-            for(let i=1; i<=cantF7; i++) {
-                columnasGrid.push({ id: `F7-${i}`, name: `F7-${i} (Pura)`, type: 'F7', parent: `F7-${i}`, index: 0 });
-            }
-            for(let i=1; i<=cantF9; i++) {
-                for(let j=1; j<=equivF9; j++) {
-                    columnasGrid.push({ id: `F9-${i}-S${j}`, name: `F9-${i} (Mitad ${j})`, type: 'F9-Sub', parent: `F9-${i}`, index: j-1 });
-                }
-            }
-            for(let i=1; i<=cantF11; i++) {
-                for(let j=1; j<=equivF11; j++) {
-                    columnasGrid.push({ id: `F11-${i}-S${j}`, name: `F11-${i} (Sec ${j})`, type: 'F11-Sub', parent: `F11-${i}`, index: j-1 });
-                }
-            }
-        }
-
-        window.aMinutos = function(horaStr) { let [h, m] = horaStr.split(':').map(Number); return (h * 60) + m; }
-        window.sumarMinutos = function(horaStr, minutosAñadir) {
-            let [h, m] = horaStr.split(':').map(Number); let total = (h * 60) + m + minutosAñadir;
-            let nuevaH = Math.floor(total / 60); let nuevoM = total % 60;
-            if (nuevaH >= 24) nuevaH -= 24; return `${nuevaH.toString().padStart(2, '0')}:${nuevoM.toString().padStart(2, '0')}`;
-        }
-        
-        function getDateFromFirebase(field) {
-            if (!field) return new Date();
-            if (field.toDate) return field.toDate();
-            if (field.seconds) return new Date(field.seconds * 1000);
-            return new Date(field); 
-        }
-        
-        function obtenerFechaHoy() {
-            let h = new Date();
-            return `${h.getFullYear()}-${(h.getMonth() + 1).toString().padStart(2, '0')}-${h.getDate().toString().padStart(2, '0')}`;
-        }
-
-        function validarEsHoraPasada(horaStr) {
-            if (fechaSeleccionada !== obtenerFechaHoy()) {
-                let fSel = new Date(fechaSeleccionada + 'T00:00:00');
-                let fHoy = new Date(obtenerFechaHoy() + 'T00:00:00');
-                return fSel < fHoy; 
-            }
-            const ahora = new Date();
-            let mActuales = (ahora.getHours() * 60) + ahora.getMinutes();
-            let mTurno = window.aMinutos(horaStr);
-            return mTurno <= mActuales; 
-        }
-
-        function actualizarLineaDeTiempo() {
-            const linea = document.getElementById('linea-tiempo-actual');
-            if(!linea) return;
-            if (fechaSeleccionada !== obtenerFechaHoy()) { linea.style.display = 'none'; return; }
-            
-            const ahora = new Date();
-            let mActuales = (ahora.getHours() * 60) + ahora.getMinutes();
-            let minInicioGrilla = window.aMinutos(primerTurno);
-            let minFinGrilla = window.aMinutos(ultimoTurno) + duracionGlobal; 
-            if (minFinGrilla <= minInicioGrilla) minFinGrilla += 1440;
-            
-            if (mActuales < minInicioGrilla || mActuales > minFinGrilla) { linea.style.display = 'none'; return; }
-            
-            const celdaH = 30;
-            let pixelesDesdeArriba = ((mActuales - minInicioGrilla) / 30) * celdaH + celdaH; 
-            
-            linea.style.top = `${pixelesDesdeArriba}px`;
-            linea.style.display = 'block';
-        }
-        setInterval(actualizarLineaDeTiempo, 60000);
-
-        const horariosBase = [];
-        for (let h = 0; h <= 23; h++) { 
-            let horaStr = h.toString().padStart(2, '0');
-            horariosBase.push(`${horaStr}:00`); horariosBase.push(`${horaStr}:30`);
-        }
-        horariosBase.reverse();
-
-        function getOcupadas(resDelDia, horaStr, duracionMin) {
-            let numBloques = duracionMin / 30;
-            let bloquesReq = [];
-            for(let b=0; b<numBloques; b++) bloquesReq.push(window.sumarMinutos(horaStr, b * 30));
-            
-            let ocupadasIds = new Set();
-            
-            resDelDia.forEach(r => {
-                let rBloques = [];
-                let rDur = r.duracion || duracionGlobal;
-                for(let b=0; b<rDur/30; b++) rBloques.push(window.sumarMinutos(r.hora, b * 30));
-                
-                let hayCruce = bloquesReq.some(b => rBloques.includes(b));
-                if (hayCruce) {
-                    if (r.modalidad === 'F7') {
-                        ocupadasIds.add(r.cancha);
-                    } else if (r.modalidad === 'F9') {
-                        if (r.cancha.includes('-S')) {
-                            let partes = r.cancha.split('-S'); let p = partes[0]; let s = parseInt(partes[1]);
-                            for(let j=0; j<equivF9; j++) ocupadasIds.add(`${p}-S${s + j}`);
-                        } else {
-                            for(let j=1; j<=equivF9; j++) ocupadasIds.add(`${r.cancha}-S${j}`);
-                        }
-                    } else if (r.modalidad === 'F11') {
-                        if (r.cancha.includes('-S')) {
-                            let partes = r.cancha.split('-S'); let p = partes[0]; let s = parseInt(partes[1]);
-                            for(let j=0; j<equivF11; j++) ocupadasIds.add(`${p}-S${s + j}`);
-                        } else {
-                            for(let j=1; j<=equivF11; j++) ocupadasIds.add(`${r.cancha}-S${j}`);
-                        }
-                    }
-                }
-            });
-            return ocupadasIds;
-        }
-
-        function calcularOpcionesCanchas(mod, ocupadas) {
-            let opciones = [];
-            if (mod === 'F7') {
-                let f7PurasLibres = columnasGrid.filter(c => c.type === 'F7' && !ocupadas.has(c.id));
-                let subsF9Libres = columnasGrid.filter(c => c.type === 'F9-Sub' && !ocupadas.has(c.id));
-                let subsF11Libres = columnasGrid.filter(c => c.type === 'F11-Sub' && !ocupadas.has(c.id));
-                
-                if (f7PurasLibres.length > 0) {
-                    opciones = f7PurasLibres.map(c => ({ id: c.id, label: `${c.name}` }));
-                } else if (subsF9Libres.length > 0) {
-                    let cuentaPadres = {};
-                    subsF9Libres.forEach(c => cuentaPadres[c.parent] = (cuentaPadres[c.parent] || 0) + 1);
-                    subsF9Libres.sort((a, b) => cuentaPadres[a.parent] - cuentaPadres[b.parent]);
-                    opciones = subsF9Libres.map(c => ({ id: c.id, label: `${c.name}` }));
-                } else if (subsF11Libres.length > 0) {
-                    let cuentaPadres = {};
-                    subsF11Libres.forEach(c => cuentaPadres[c.parent] = (cuentaPadres[c.parent] || 0) + 1);
-                    subsF11Libres.sort((a, b) => cuentaPadres[a.parent] - cuentaPadres[b.parent]);
-                    opciones = subsF11Libres.map(c => ({ id: c.id, label: `${c.name}` }));
-                }
-
-            } else if (mod === 'F9') {
-                let f9Completas = [];
-                for(let i=1; i<=cantF9; i++) {
-                    let libre = true;
-                    for(let j=1; j<=equivF9; j++) { if(ocupadas.has(`F9-${i}-S${j}`)) libre = false; }
-                    if(libre) f9Completas.push({ id: `F9-${i}`, label: `Cancha F9-${i}` });
-                }
-
-                let f9Adaptadas = [];
-                for(let i=1; i<=cantF11; i++) {
-                    let parent = `F11-${i}`;
-                    let startIdx = -1;
-                    for (let s=1; s <= equivF11 - equivF9 + 1; s++) {
-                        let libre = true;
-                        for (let j=0; j < equivF9; j++) { if (ocupadas.has(`${parent}-S${s + j}`)) libre = false; }
-                        if (libre) { startIdx = s; break; } 
-                    }
-                    if (startIdx !== -1) {
-                        let libresPadre = 0;
-                        for (let s=1; s<=equivF11; s++) { if(!ocupadas.has(`${parent}-S${s}`)) libresPadre++; }
-                        f9Adaptadas.push({ id: `${parent}-S${startIdx}`, label: `Cancha F11-${i}`, libres: libresPadre });
-                    }
-                }
-                f9Adaptadas.sort((a,b) => a.libres - b.libres);
-
-                if (f9Completas.length > 0) { opciones = f9Completas; } 
-                else { opciones = f9Adaptadas.map(a => ({ id: a.id, label: a.label })); }
-
-            } else if (mod === 'F11') {
-                for(let i=1; i<=cantF11; i++) {
-                    let canchaEnteraLibre = true;
-                    for(let j=1; j<=equivF11; j++) { if(ocupadas.has(`F11-${i}-S${j}`)) canchaEnteraLibre = false; }
-                    if (canchaEnteraLibre) opciones.push({ id: `F11-${i}`, label: `Cancha F11-${i}` });
-                }
-            }
-            return opciones;
-        }
-
-        window.actualizarOpcionesCanchas = function() {
-            if (!reservaEnProcesoHora) return;
-            let mod = document.getElementById('select-modalidad').value;
-            let resDelDia = reservasGlobales.filter(r => r.fecha === fechaSeleccionada);
-            let ocupadas = getOcupadas(resDelDia, reservaEnProcesoHora, duracionGlobal); 
-            
-            let opciones = calcularOpcionesCanchas(mod, ocupadas);
-            
-            const selectCancha = document.getElementById('select-cancha-modal');
-            const btnGuardar = document.getElementById('btn-guardar-reserva');
-            const msjDisp = document.getElementById('mensaje-disponibilidad');
-
-            selectCancha.innerHTML = '';
-            if (opciones.length === 0) {
-                btnGuardar.disabled = true; btnGuardar.style.opacity = '0.5';
-                msjDisp.style.display = 'block';
-            } else {
-                opciones.forEach(o => selectCancha.innerHTML += `<option value="${o.id}" style="color:black;">${o.label}</option>`);
-                btnGuardar.disabled = false; btnGuardar.style.opacity = '1';
-                msjDisp.style.display = 'none';
-            }
-        }
-
-        window.abrirModalReservaCliente = function(hora) {
-            let minI = window.aMinutos(hora); let minU = window.aMinutos(ultimoTurno);
-            if (minI > minU) { alert("Supera el límite de cierre."); return; }
-            if(validarEsHoraPasada(hora)) { alert("No puedes reservar un horario que ya pasó."); return; }
-
-            reservaEnProcesoHora = hora;
-            let pF = fechaSeleccionada.split('-');
-            document.getElementById('reserva-fecha-display').innerText = `${pF[2]}/${pF[1]}/${pF[0]}`;
-            document.getElementById('reserva-hora-display').innerText = `${hora} hs`;
-
-            let selectMod = document.getElementById('select-modalidad');
-            selectMod.innerHTML = '';
-            if (cantF7 > 0 || cantF9 > 0 || cantF11 > 0) selectMod.innerHTML += `<option value="F7">Fútbol 7 ($${precioF7})</option>`;
-            if (cantF9 > 0 || cantF11 > 0) selectMod.innerHTML += `<option value="F9">Fútbol 9 ($${precioF9})</option>`;
-            if (cantF11 > 0) selectMod.innerHTML += `<option value="F11">Fútbol 11 ($${precioF11})</option>`;
-            
-            window.actualizarOpcionesCanchas();
-
-            document.getElementById('input-nombre-cliente').value = ""; 
-            document.getElementById('input-telefono-cliente').value = ""; 
-            document.getElementById('modal-reserva-cliente').style.display = 'flex';
-        }
-
-        window.cerrarModalReservaCliente = function() { reservaEnProcesoHora = null; document.getElementById('modal-reserva-cliente').style.display = 'none'; }
-
-        window.confirmarReservaCliente = async function() {
-            const iN = document.getElementById('input-nombre-cliente').value;
-            const iT = document.getElementById('input-telefono-cliente').value;
-            const cM = document.getElementById('select-cancha-modal').value;
-            const mod = document.getElementById('select-modalidad').value;
-
-            if (!iN) { alert("Ingresa el Nombre."); return; }
-            if (!cM) { alert("No hay cancha seleccionada válida."); return; }
-            
-            const btn = document.getElementById('btn-guardar-reserva');
-            btn.innerText = "Guardando..."; btn.disabled = true;
-
-            try {
-                await addDoc(collection(db, "reservas"), { 
-                    fecha: fechaSeleccionada, hora: reservaEnProcesoHora, cancha: cM, modalidad: mod,
-                    jugador: iN, telefono: iT, duracion: duracionGlobal, 
-                    fechaRegistro: serverTimestamp(), esFijo: false,
-                    pagoEfectivo: 0, pagoTransferencia: 0, consumos: [], tipoEvento: "Normal"
-                });
-                window.cerrarModalReservaCliente();
-            } catch (error) { 
-                alert("Error de red."); 
-            } finally {
-                btn.innerText = "Confirmar Turno"; btn.disabled = false;
-            }
-        }
-
-        window.actualizarOpcionesCanchasAdmin = function() {
-            if (!reservaEnProcesoHora) return;
-            let mod = document.getElementById('select-modalidad-admin').value;
-            let duracionAdmin = parseInt(document.getElementById('select-duracion-admin').value) || duracionGlobal;
-            
-            let resDelDia = reservasGlobales.filter(r => r.fecha === fechaSeleccionada);
-            let ocupadas = getOcupadas(resDelDia, reservaEnProcesoHora, duracionAdmin);
-            
-            let opciones = calcularOpcionesCanchas(mod, ocupadas);
-            
-            const selectCancha = document.getElementById('select-cancha-admin');
-            const btnGuardar = document.getElementById('btn-guardar-reserva-admin');
-            const msjDisp = document.getElementById('mensaje-disponibilidad-admin');
-
-            selectCancha.innerHTML = '';
-            if (opciones.length === 0) {
-                btnGuardar.disabled = true; btnGuardar.style.opacity = '0.5';
-                msjDisp.style.display = 'block';
-            } else {
-                opciones.forEach(o => selectCancha.innerHTML += `<option value="${o.id}" style="color:black;">${o.label}</option>`);
-                btnGuardar.disabled = false; btnGuardar.style.opacity = '1';
-                msjDisp.style.display = 'none';
-            }
-        }
-
-        window.abrirModalReservaAdmin = function(hora) {
-            let minI = window.aMinutos(hora); let minU = window.aMinutos(ultimoTurno);
-            if (minI > minU) { alert("Supera el límite de cierre."); return; }
-            if(validarEsHoraPasada(hora)) { alert("No puedes reservar un horario que ya pasó."); return; }
-
-            reservaEnProcesoHora = hora;
-            let pF = fechaSeleccionada.split('-');
-            document.getElementById('admin-fecha-display').innerText = `${pF[2]}/${pF[1]}/${pF[0]}`;
-            document.getElementById('admin-hora-display').innerText = `${hora} hs`;
-
-            document.getElementById('select-evento-admin').value = "Normal";
-            document.getElementById('select-duracion-admin').value = duracionGlobal.toString();
-
-            let selectMod = document.getElementById('select-modalidad-admin');
-            selectMod.innerHTML = '';
-            if (cantF7 > 0 || cantF9 > 0 || cantF11 > 0) selectMod.innerHTML += `<option value="F7">Fútbol 7</option>`;
-            if (cantF9 > 0 || cantF11 > 0) selectMod.innerHTML += `<option value="F9">Fútbol 9</option>`;
-            if (cantF11 > 0) selectMod.innerHTML += `<option value="F11">Fútbol 11</option>`;
-            
-            window.actualizarOpcionesCanchasAdmin();
-
-            document.getElementById('input-nombre-admin').value = ""; 
-            document.getElementById('input-telefono-admin').value = ""; 
-            document.getElementById('modal-reserva-admin').style.display = 'flex';
-        }
-
-        window.cerrarModalReservaAdmin = function() { reservaEnProcesoHora = null; document.getElementById('modal-reserva-admin').style.display = 'none'; }
-
-        window.confirmarReservaAdmin = async function() {
-            const iN = document.getElementById('input-nombre-admin').value;
-            const iT = document.getElementById('input-telefono-admin').value;
-            const cM = document.getElementById('select-cancha-admin').value;
-            const mod = document.getElementById('select-modalidad-admin').value;
-            const duracionAdmin = parseInt(document.getElementById('select-duracion-admin').value) || duracionGlobal;
-            const tipoEvento = document.getElementById('select-evento-admin').value;
-
-            if (!iN) { alert("Ingresa el Nombre o Título del evento."); return; }
-            if (!cM) { alert("No hay cancha seleccionada válida para este bloque de tiempo."); return; }
-            
-            const btn = document.getElementById('btn-guardar-reserva-admin');
-            btn.innerText = "Guardando..."; btn.disabled = true;
-
-            try {
-                await addDoc(collection(db, "reservas"), { 
-                    fecha: fechaSeleccionada, hora: reservaEnProcesoHora, cancha: cM, modalidad: mod,
-                    jugador: iN, telefono: iT, duracion: duracionAdmin, 
-                    fechaRegistro: serverTimestamp(), esFijo: false,
-                    pagoEfectivo: 0, pagoTransferencia: 0, consumos: [], 
-                    tipoEvento: tipoEvento, esClase: (tipoEvento === 'Clases'), profe: (tipoEvento === 'Clases' ? iN : null)
-                });
-                window.cerrarModalReservaAdmin();
-            } catch (error) { 
-                alert("Error de red."); 
-            } finally {
-                btn.innerText = "Guardar Evento"; btn.disabled = false;
-            }
-        }
-
-        window.renderizarPantallas = function() {
-            let fActualStr = fechaSeleccionada;
-            let fSelecObj = new Date(fActualStr.split('-')[0], fActualStr.split('-')[1] - 1, fActualStr.split('-')[2]);
-            let diaCerrado = !diasAbiertosGlobal.includes(fSelecObj.getDay());
-
-            const contHorarios = document.getElementById('lista-horarios');
-            const contTurnero = document.getElementById('lista-reservas-turnero');
-            
-            contHorarios.innerHTML = ''; contTurnero.innerHTML = '';
-
-            if (diaCerrado) {
-                contHorarios.innerHTML = `<p style="text-align:center; color:#9ca3af; margin-top:20px;">El complejo está cerrado.</p>`;
-                contTurnero.innerHTML = `<p style="text-align:center; color:#9ca3af; margin-top:40px;">No hay actividad. Complejo cerrado.</p>`;
-                return; 
-            }
-
-            let resDelDia = reservasGlobales.filter(r => r.fecha === fechaSeleccionada);
-
-            // 1. VISTA CLIENTE
-            const horariosFiltrados = horariosBase.filter(h => h >= primerTurno && h <= ultimoTurno);
-            try {
-                horariosFiltrados.forEach(hora => {
-                    if(validarEsHoraPasada(hora)) return; 
-
-                    let ocupadas = getOcupadas(resDelDia, hora, duracionGlobal); 
-                    
-                    let libresF7Total = columnasGrid.filter(c => c.type === 'F7' && !ocupadas.has(c.id)).length;
-                    let libresF9Completas = 0;
-                    for(let i=1; i<=cantF9; i++) {
-                        let ok = true; for(let j=1; j<=equivF9; j++) { if(ocupadas.has(`F9-${i}-S${j}`)) ok=false; }
-                        if (ok) libresF9Completas++;
-                    }
-                    let libresF9enF11 = 0;
-                    for(let i=1; i<=cantF11; i++) {
-                        for (let s=1; s <= equivF11 - equivF9 + 1; s++) {
-                            let ok = true;
-                            for(let j=0; j<equivF9; j++) { if(ocupadas.has(`F11-${i}-S${s + j}`)) ok=false; }
-                            if (ok) { libresF9enF11++; break; } 
-                        }
-                    }
-                    let totalF9Disponibles = libresF9Completas + libresF9enF11;
-                    let libresF11Completas = 0;
-                    for(let i=1; i<=cantF11; i++) {
-                        let ok = true; for(let j=1; j<=equivF11; j++) { if(ocupadas.has(`F11-${i}-S${j}`)) ok=false; }
-                        if (ok) libresF11Completas++;
-                    }
-
-                    let canchasLibresTotal = libresF7Total + totalF9Disponibles + libresF11Completas;
-                    let hsTexto = duracionGlobal % 60 === 0 ? (duracionGlobal/60) : (duracionGlobal/60).toFixed(1);
-
-                    if (canchasLibresTotal > 0) {
-                        const div = document.createElement('div'); div.className = 'turno-item';
-                        div.onclick = () => window.abrirModalReservaCliente(hora);
-                        
-                        let textoDisp = [];
-                        if(libresF7Total > 0) textoDisp.push(`${libresF7Total} F7`);
-                        if(totalF9Disponibles > 0) textoDisp.push(`${totalF9Disponibles} F9`);
-                        if(libresF11Completas > 0) textoDisp.push(`${libresF11Completas} F11`);
-                        
-                        let textoCanchas = textoDisp.join(' / ');
-                        
-                        div.innerHTML = `<span class="punto-verde"></span><span class="hora">${hora} hs | </span><span class="texto-disponible">Turno ${hsTexto} hs</span><span class="texto-canchas-disp">${textoCanchas} libres</span>`;
-                        contHorarios.appendChild(div);
-                    }
-                });
-            } catch(e) { console.error("Error render cliente:", e); }
-
-            // 2. VISTA TURNERO GRILLA
-            let minActual = window.aMinutos(primerTurno);
-            let minFin = window.aMinutos(ultimoTurno) + duracionGlobal; 
-            if (minFin <= minActual) minFin += 1440; 
-
-            try {
-                let htmlGrilla = `<div class="contenedor-grilla">`;
-                const celdaH = 30; 
-
-                // LINEA DE TIEMPO
-                htmlGrilla += `<div id="linea-tiempo-actual"></div>`;
-
-                htmlGrilla += `<div style="width: 55px; flex-shrink: 0; border-right: 1px solid #2c3540; background: #1e252d;">`;
-                htmlGrilla += `<div style="height: ${celdaH}px; border-bottom: 1px solid #2c3540; background: #242c36;"></div>`; 
-                for (let m = minActual; m < minFin; m += 30) {
-                    let hStr = (m % 60 === 0) ? `${Math.floor(m / 60) % 24}:00` : '';
-                    let border = (m % 60 === 0) ? 'border-bottom: 1px dashed rgba(255,255,255,0.05);' : 'border-bottom: 1px solid #2c3540;';
-                    htmlGrilla += `<div style="height: ${celdaH}px; ${border} text-align: center; color: #9ca3af; font-size: 0.8em; padding-top: 3px; box-sizing: border-box;">${hStr}</div>`;
-                }
-                htmlGrilla += `</div>`;
-
-                columnasGrid.forEach(col => {
-                    htmlGrilla += `<div style="flex: 1; min-width: 140px; border-right: 1px solid #2c3540; position: relative;">`;
-                    htmlGrilla += `<div style="height: ${celdaH}px; border-bottom: 1px solid #2c3540; text-align: center; line-height: ${celdaH}px; font-weight: bold; background: #242c36; font-size: 0.85em; color: #d1d5db; overflow: hidden; white-space: nowrap;">${col.name}</div>`;
-                    
-                    for (let m = minActual; m < minFin; m += 30) {
-                        let hFormateada = `${(Math.floor(m / 60) % 24).toString().padStart(2,'0')}:${(m % 60).toString().padStart(2,'0')}`;
-                        let border = (m % 60 === 0) ? 'border-bottom: 1px dashed rgba(255,255,255,0.05);' : 'border-bottom: 1px solid #2c3540;';
-                        
-                        let isOcupadoAhora = false;
-                        resDelDia.forEach(r => {
-                            let mI = window.aMinutos(r.hora); let mF = mI + (r.duracion || duracionGlobal);
-                            if (m >= mI && m < mF) {
-                                if (r.modalidad === 'F7' && r.cancha === col.id) isOcupadoAhora = true;
-                                if (r.modalidad === 'F9') {
-                                    if (r.cancha.includes('-S') && r.cancha.split('-S')[0] === col.parent) {
-                                        let startS = parseInt(r.cancha.split('-S')[1]);
-                                        if (col.index + 1 >= startS && col.index + 1 < startS + equivF9) isOcupadoAhora = true;
-                                    } else if (!r.cancha.includes('-S') && r.cancha === col.parent) isOcupadoAhora = true;
-                                }
-                                if (r.modalidad === 'F11' && r.cancha === col.parent) isOcupadoAhora = true;
-                            }
-                        });
-
-                        let esPasado = validarEsHoraPasada(hFormateada);
-
-                        if (!isOcupadoAhora) {
-                            if (esPasado) {
-                                htmlGrilla += `<div style="height: ${celdaH}px; ${border} box-sizing: border-box; opacity: 0.2; cursor: not-allowed; background: rgba(0,0,0,0.3);"></div>`;
-                            } else {
-                                htmlGrilla += `<div class="celda-vacia-hover" style="height: ${celdaH}px; ${border} box-sizing: border-box; cursor: pointer;" onclick="window.abrirModalReservaAdmin('${hFormateada}')"></div>`;
-                            }
-                        } else {
-                            htmlGrilla += `<div style="height: ${celdaH}px; ${border} box-sizing: border-box;"></div>`;
-                        }
-                    }
-
-                    // Renderizar Tarjetas
-                    let resQueEmpiezanAqui = resDelDia.filter(r => {
-                        if (r.modalidad === 'F7' && r.cancha === col.id) return true;
-                        if (r.modalidad === 'F9') {
-                            if (r.cancha.includes('-S') && r.cancha === col.id) return true; 
-                            if (!r.cancha.includes('-S') && r.cancha === col.parent && col.index === 0) return true; 
-                        }
-                        if (r.modalidad === 'F11' && r.cancha === col.parent && col.index === 0) return true;
-                        return false;
-                    });
-
-                    resQueEmpiezanAqui.forEach(res => {
-                        let minRes = window.aMinutos(res.hora); if (minRes < minActual && minFin > 1440) minRes += 1440;
-                        
-                        let offsetTop = ((minRes - minActual) / 30) * celdaH + celdaH; 
-                        let rDur = res.duracion || duracionGlobal;
-                        let height = (rDur / 30) * celdaH; 
-                        
-                        let spanCol = 1;
-                        if (res.modalidad === 'F9') spanCol = equivF9;
-                        if (res.modalidad === 'F11') spanCol = equivF11;
-                        
-                        let cardWidth = `calc(${spanCol * 100}% + ${spanCol - 1}px - 8px)`; 
-                        
-                        let eClass = res.esFijo ? "fijo" : "";
-                        let cTxt = res.esFijo ? "#2e1065" : "#064e3b";
-                        let bgTag = res.esFijo ? "rgba(0,0,0,0.15)" : "rgba(0,0,0,0.15)";
-                        
-                        let iconEvento = "";
-                        if (res.tipoEvento === "Torneo") iconEvento = "🏆 ";
-                        else if (res.tipoEvento === "Clases") iconEvento = "🧑‍🏫 ";
-                        else if (res.tipoEvento === "Especial") iconEvento = "⭐ ";
-
-                        let factorPrecio = (res.duracion || duracionGlobal) / duracionGlobal;
-                        let pCancha = 0;
-                        if (res.modalidad === 'F7') pCancha = parseInt(precioF7) * factorPrecio;
-                        else if (res.modalidad === 'F9') pCancha = parseInt(precioF9) * factorPrecio;
-                        else if (res.modalidad === 'F11') pCancha = parseInt(precioF11) * factorPrecio;
-
-                        let cConsumos = (res.consumos || []).reduce((acc, curr) => acc + parseFloat(curr.precio), 0);
-                        let tGen = pCancha + cConsumos;
-                        let tAbonado = (parseFloat(res.pagoEfectivo) || 0) + (parseFloat(res.pagoTransferencia) || 0);
-                        let tickPago = (tAbonado >= tGen && tGen > 0) ? "✅" : "⚠️";
-
-                        htmlGrilla += `
-                            <div class="tarjeta-reserva-grilla ${eClass}" onclick="window.abrirModal('${res.id}')" 
-                                 style="position: absolute; top: ${offsetTop}px; left: 4px; width: ${cardWidth}; height: ${height - 4}px; 
-                                        padding: 6px 8px; font-size: 0.8em; overflow: hidden; border-radius: 6px; cursor: pointer; box-shadow: 0 3px 5px rgba(0,0,0,0.2); display: flex; flex-direction: column; justify-content: space-between; z-index: 10;">
-                                <div style="display: flex; justify-content: space-between; align-items: flex-start; line-height: 1;">
-                                    <span style="font-weight: 900; font-size: 1.15em; color: ${cTxt}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${iconEvento}${res.jugador}</span>
-                                    <span style="background: ${bgTag}; padding: 2px 5px; border-radius: 4px; font-weight: bold; font-size: 0.75em; color: ${cTxt};">${res.modalidad}</span>
-                                </div>
-                                <span style="color: ${cTxt}; opacity: 0.9; font-weight: 800; font-size: 0.95em; line-height: 1;">${res.hora} hs ${res.esFijo ? '🔄' : ''} ${tickPago}</span>
-                                <span style="margin-top: auto; font-size: 0.9em; font-weight: 700; color: ${cTxt}; opacity: 0.85; line-height: 1; display: flex; align-items: center; gap: 4px;">
-                                    <span>📱</span> ${res.telefono || 'Sin tel'}
-                                </span>
-                            </div>
-                        `;
-                    });
-                    
-                    htmlGrilla += `</div>`; 
-                });
-
-                htmlGrilla += `</div>`;
-                contTurnero.innerHTML = htmlGrilla;
-                actualizarLineaDeTiempo();
-
-            } catch(e) { console.error("Error render turnero:", e); }
-        }
-
-        window.cambiarVista = function(v) {
-            document.getElementById('pantalla-cliente').style.display = v === 'cliente' ? 'block' : 'none';
-            document.getElementById('pantalla-turnero').style.display = v === 'turnero' ? 'block' : 'none';
-            document.getElementById('btn-cliente').classList.toggle('activo', v === 'cliente');
-            document.getElementById('btn-turnero').classList.toggle('activo', v === 'turnero');
-            if (v === 'turnero') actualizarLineaDeTiempo();
-        }
-
-        window.toggleAcordeon = function(id) {
-            const contenido = document.getElementById(id);
-            const flecha = document.getElementById('flecha-' + id);
-            if (contenido.classList.contains('abierto')) {
-                contenido.classList.remove('abierto');
-                flecha.innerText = '🔽';
-            } else {
-                contenido.classList.add('abierto');
-                flecha.innerText = '🔼';
-            }
-        }
-
-        window.abrirModalConfig = function() { document.getElementById('modal-config').style.display = 'flex'; }
-        window.cerrarModalConfig = function() { document.getElementById('modal-config').style.display = 'none'; }
-        
-        window.guardarConfiguracion = async function() {
-            try {
-                const primerTurno = document.getElementById('input-primer-turno').value;
-                const ultimoTurno = document.getElementById('input-ultimo-turno').value;
-                const duracionTurno = parseInt(document.getElementById('input-duracion').value);
-
-                if (!primerTurno || !ultimoTurno) {
-                    alert("⚠️ Por favor, define el horario de Apertura y Cierre.");
-                    return;
-                }
-                if (isNaN(duracionTurno)) {
-                    alert("⚠️ Por favor, selecciona una Duración Standard.");
-                    return;
-                }
-
-                const c = {
-                    primerTurno: primerTurno,
-                    ultimoTurno: ultimoTurno,
-                    precioF7: document.getElementById('input-precio-f7').value || "0",
-                    precioF9: document.getElementById('input-precio-f9').value || "0",
-                    precioF11: document.getElementById('input-precio-f11').value || "0",
-                    duracionTurno: duracionTurno,
-                    canchasF7: parseInt(document.getElementById('input-canchas-f7').value) || 0,
-                    canchasF9: parseInt(document.getElementById('input-canchas-f9').value) || 0,
-                    canchasF11: parseInt(document.getElementById('input-canchas-f11').value) || 0,
-                    equivF9: parseInt(document.getElementById('input-equiv-f9').value) || 2,
-                    equivF11: parseInt(document.getElementById('input-equiv-f11').value) || 3,
-                    diasAbiertos: Array.from(document.querySelectorAll('.check-dia:checked')).map(cb => parseInt(cb.value))
-                };
-                
-                await setDoc(doc(db, "configuracion", "turnero"), c); 
-                window.cerrarModalConfig(); 
-                alert("¡Configuración guardada exitosamente! ✅"); 
-            } catch (e) { 
-                console.error("Error en Firebase:", e);
-                alert("Hubo un error al guardar. Revisa la consola o verifica tu conexión."); 
-            }
-        }
-
-        window.abrirModal = function(id) { 
-            reservaSeleccionadaId = id; 
-            const res = reservasGlobales.find(r => r.id === id);
-            if(!res) return;
-            document.getElementById('pago-efectivo').value = res.pagoEfectivo || "";
-            document.getElementById('pago-transferencia').value = res.pagoTransferencia || "";
-            renderizarModalTurnoAcciones();
-            document.getElementById('modal-acciones').style.display = 'flex'; 
-        }
-
-        window.renderizarModalTurnoAcciones = function() {
-            if(!reservaSeleccionadaId) return;
-            const res = reservasGlobales.find(r => r.id === reservaSeleccionadaId);
-            if(!res) { window.cerrarModalAcciones(); return; }
-
-            let txtE = (res.tipoEvento && res.tipoEvento !== 'Normal') ? `[${res.tipoEvento}]` : '';
-            document.getElementById('titulo-modal-acciones').innerText = `Gestión: ${res.jugador} ${txtE} (${res.hora}hs - ${res.modalidad})`;
-
-            const btnFijar = document.getElementById('btn-toggle-fijo');
-            if(res.esFijo) { btnFijar.style.display = 'none'; } 
-            else { btnFijar.style.display = 'block'; }
-
-            let factorPrecio = (res.duracion || duracionGlobal) / duracionGlobal;
-            let pCancha = 0;
-            if (res.modalidad === 'F7') pCancha = parseInt(precioF7) * factorPrecio;
-            else if (res.modalidad === 'F9') pCancha = parseInt(precioF9) * factorPrecio;
-            else if (res.modalidad === 'F11') pCancha = parseInt(precioF11) * factorPrecio;
-            
-            let consumos = res.consumos || [];
-            let totalConsumos = consumos.reduce((acc, curr) => acc + (parseFloat(curr.precio) || 0), 0);
-            let totalGeneral = pCancha + totalConsumos;
-
-            document.getElementById('res-precio-cancha').innerText = `$${pCancha}`;
-            document.getElementById('res-precio-consumos').innerText = `$${totalConsumos}`;
-            document.getElementById('res-precio-total').innerText = `$${totalGeneral}`;
-
-            let sel = document.getElementById('select-consumo-turno');
-            sel.innerHTML = '<option value="" disabled selected>Elegir producto...</option>';
-            inventarioGlobal.sort((a,b)=>a.nombre.localeCompare(b.nombre)).forEach(p => {
-                let stock = parseInt(p.stock) || 0;
-                if(stock > 0) sel.innerHTML += `<option value="${p.id}">${p.nombre} - $${p.precio}</option>`;
-            });
-
-            let ul = document.getElementById('lista-consumos-turno');
-            ul.innerHTML = '';
-            if(consumos.length === 0) {
-                ul.innerHTML = '<li style="color: #9ca3af; font-style: italic;">Sin consumos adicionales.</li>';
-            } else {
-                consumos.forEach((c, index) => {
-                    ul.innerHTML += `<li style="display: flex; justify-content: space-between; border-bottom: 1px solid #2c3540; padding: 5px 0;">
-                            <span class="text-neutral-main">${c.nombre}</span><span><span class="text-neutral-bold" style="margin-right: 10px;">$${c.precio}</span>
-                            <button onclick="window.eliminarConsumoTurno(${index}, '${c.prodId}')" style="background:none;border:none;cursor:pointer;font-size:1.1em;">❌</button></span></li>`;
-                });
-            }
-            window.calcularFaltante(); 
-        }
-
-        window.cerrarModalAcciones = function() { reservaSeleccionadaId = null; document.getElementById('modal-acciones').style.display = 'none'; }
-
-        window.agregarConsumoTurno = async function() {
-            if(!reservaSeleccionadaId) return;
-            const res = reservasGlobales.find(r => r.id === reservaSeleccionadaId);
-            const select = document.getElementById('select-consumo-turno');
-            const prodId = select.value;
-            if(!prodId) return;
-            
-            const producto = inventarioGlobal.find(p => p.id === prodId);
-            if(producto) {
-                let stockActual = parseInt(producto.stock) || 0;
-                if(stockActual <= 0) { alert("No hay stock disponible de este producto."); return; }
-
-                let consumosActuales = res.consumos || [];
-                consumosActuales.push({ prodId: producto.id, nombre: producto.nombre, precio: producto.precio });
-                
-                try {
-                    await updateDoc(doc(db, "reservas", reservaSeleccionadaId), { consumos: consumosActuales });
-                    await updateDoc(doc(db, "inventario", prodId), { stock: stockActual - 1 });
-                } catch(e) { alert("Error al añadir consumo."); }
-            }
-        }
-
-        window.eliminarConsumoTurno = async function(index, prodId) {
-            if(!reservaSeleccionadaId) return;
-            const res = reservasGlobales.find(r => r.id === reservaSeleccionadaId);
-            let consumosActuales = res.consumos || [];
-            
-            consumosActuales.splice(index, 1);
-            
-            try {
-                await updateDoc(doc(db, "reservas", reservaSeleccionadaId), { consumos: consumosActuales });
-                if(prodId && prodId !== 'undefined') {
-                    const producto = inventarioGlobal.find(p => p.id === prodId);
-                    if(producto) {
-                        let stockActual = parseInt(producto.stock) || 0;
-                        await updateDoc(doc(db, "inventario", prodId), { stock: stockActual + 1 });
-                    }
-                }
-            } catch(e) { alert("Error al quitar consumo."); }
-        }
-
-        window.calcularFaltante = function() {
-            if(!reservaSeleccionadaId) return;
-            const res = reservasGlobales.find(r => r.id === reservaSeleccionadaId);
-            if(!res) return;
-
-            let factorPrecio = (res.duracion || duracionGlobal) / duracionGlobal;
-            let pCancha = 0;
-            if (res.modalidad === 'F7') pCancha = parseInt(precioF7) * factorPrecio;
-            else if (res.modalidad === 'F9') pCancha = parseInt(precioF9) * factorPrecio;
-            else if (res.modalidad === 'F11') pCancha = parseInt(precioF11) * factorPrecio;
-
-            let cConsumos = (res.consumos || []).reduce((acc, c) => acc + parseFloat(c.precio), 0);
-            let tGen = pCancha + cConsumos;
-
-            let efe = parseFloat(document.getElementById('pago-efectivo').value) || 0;
-            let trans = parseFloat(document.getElementById('pago-transferencia').value) || 0;
-
-            let faltante = tGen - (efe + trans);
-            let txt = document.getElementById('txt-faltante');
-            if(faltante <= 0 && tGen > 0) {
-                txt.innerText = `Pagado por completo ✅`; txt.style.color = "#d1d5db";
-            } else {
-                txt.innerText = `Falta cobrar: $${faltante}`; txt.style.color = "#ef4444";
-            }
-        }
-
-        window.cobrarTurno = async function() {
-            if(!reservaSeleccionadaId) return;
-            let efe = parseFloat(document.getElementById('pago-efectivo').value) || 0;
-            let trans = parseFloat(document.getElementById('pago-transferencia').value) || 0;
-            try {
-                await updateDoc(doc(db, "reservas", reservaSeleccionadaId), { pagoEfectivo: efe, pagoTransferencia: trans });
-                window.cerrarModalAcciones();
-            } catch(e) { alert("Error al registrar pago."); }
-        }
-
-        window.abrirModalFinanzas = function() { document.getElementById('modal-finanzas').style.display = 'flex'; }
-        window.cerrarModalFinanzas = function() { document.getElementById('modal-finanzas').style.display = 'none'; }
-
-        window.agregarInventario = async function() {
-            const nombre = document.getElementById('inv-nombre').value.trim();
-            const categoria = document.getElementById('inv-categoria').value;
-            const precio = document.getElementById('inv-precio').value;
-            const stock = document.getElementById('inv-stock').value;
-            const costo = document.getElementById('inv-costo').value;
-
-            if(!nombre || !categoria || !precio || stock === "" || costo === "") { alert("Completa todos los campos del producto."); return; }
-            try {
-                await addDoc(collection(db, "inventario"), { 
-                    nombre: nombre, categoria: categoria, 
-                    precio: parseFloat(precio), stock: parseInt(stock), costo: parseFloat(costo) 
-                });
-                document.getElementById('inv-nombre').value = ''; document.getElementById('inv-categoria').value = ''; 
-                document.getElementById('inv-precio').value = ''; document.getElementById('inv-stock').value = ''; document.getElementById('inv-costo').value = '';
-            } catch (error) { alert("Error al guardar."); }
-        }
-        
-        window.eliminarInventario = async function(id) { if(confirm("¿Borrar este producto?")) await deleteDoc(doc(db, "inventario", id)); }
-        
-        window.abrirModalReposicion = function(id, nombre, costoAnterior) {
-            document.getElementById('reponer-id-prod').value = id;
-            document.getElementById('lbl-reponer-prod').innerText = `Reponiendo: ${nombre}`;
-            document.getElementById('reponer-cantidad').value = '';
-            document.getElementById('reponer-costo').value = costoAnterior || '';
-            document.getElementById('modal-reponer-stock').style.display = 'flex';
-        }
-        window.cerrarModalReposicion = function() { document.getElementById('modal-reponer-stock').style.display = 'none'; }
-
-        window.confirmarReposicionStock = async function() {
-            const id = document.getElementById('reponer-id-prod').value;
-            const cant = parseInt(document.getElementById('reponer-cantidad').value);
-            const costoUnitario = parseFloat(document.getElementById('reponer-costo').value);
-            const nombreProd = document.getElementById('lbl-reponer-prod').innerText.split(': ')[1];
-
-            if(isNaN(cant) || cant <= 0 || isNaN(costoUnitario) || costoUnitario < 0) { alert("Ingresa cantidad y costo válidos."); return; }
-
-            const prod = inventarioGlobal.find(p => p.id === id);
-            if(prod) {
-                let nuevoStock = (parseInt(prod.stock) || 0) + cant;
-                let gastoTotal = cant * costoUnitario;
-                try {
-                    await updateDoc(doc(db, "inventario", id), { stock: nuevoStock, costo: costoUnitario });
-                    if(gastoTotal > 0) {
-                        await addDoc(collection(db, "gastos"), { 
-                            titulo: `Reposición Stock: ${nombreProd}`, descripcion: `${cant} unidades a $${costoUnitario} c/u`, 
-                            importe: gastoTotal, fechaRegistro: serverTimestamp() 
-                        });
-                    }
-                    window.cerrarModalReposicion();
-                } catch(e) { alert("Error al reponer stock."); }
-            }
-        }
-
-        window.abrirModalEditarPrecio = function(id, nombre, precioActual) {
-            document.getElementById('editar-id-prod').value = id;
-            document.getElementById('lbl-editar-prod').innerText = `Producto: ${nombre}`;
-            document.getElementById('editar-precio-nuevo').value = precioActual || '';
-            document.getElementById('modal-editar-precio').style.display = 'flex';
-        }
-        window.cerrarModalEditarPrecio = function() { document.getElementById('modal-editar-precio').style.display = 'none'; }
-
-        window.confirmarEditarPrecio = async function() {
-            const id = document.getElementById('editar-id-prod').value;
-            const nuevoPrecio = parseFloat(document.getElementById('editar-precio-nuevo').value);
-            
-            if(isNaN(nuevoPrecio) || nuevoPrecio < 0) { alert("Ingresa un precio válido."); return; }
-
-            try {
-                await updateDoc(doc(db, "inventario", id), { precio: nuevoPrecio });
-                window.cerrarModalEditarPrecio();
-            } catch(e) { alert("Error al actualizar precio."); }
-        }
-
-        function renderizarInventario() {
-            const tbody = document.getElementById('tabla-inventario');
-            if(!tbody) return;
-            tbody.innerHTML = '';
-            if(inventarioGlobal.length === 0) { tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #9ca3af; padding: 15px;">No hay productos</td></tr>'; return; }
-            
-            inventarioGlobal.sort((a, b) => a.nombre.localeCompare(b.nombre)).forEach(prod => {
-                let stockVal = parseInt(prod.stock) || 0;
-                tbody.innerHTML += `<tr>
-                    <td><strong class="text-neutral-main">${prod.nombre}</strong><br><small class="text-neutral-sub">${prod.categoria}</small></td>
-                    <td style="text-align: center; color: ${stockVal <= 0 ? '#ef4444' : '#d1d5db'}; font-weight: bold;">${stockVal}</td>
-                    <td style="text-align: right;" class="text-neutral-bold">$${prod.precio}</td>
-                    <td style="text-align: center;">
-                        <button class="btn-modal btn-stock" onclick="window.abrirModalReposicion('${prod.id}', '${prod.nombre}', ${prod.costo || 0})" title="Reponer Stock">➕</button>
-                        <button class="btn-modal btn-stock" onclick="window.abrirModalEditarPrecio('${prod.id}', '${prod.nombre}', ${prod.precio || 0})" title="Editar Precio" style="margin-left: 5px; background-color: #3b82f6;">✏️</button>
-                        <button onclick="window.eliminarInventario('${prod.id}')" style="background:none;border:none;cursor:pointer;font-size:1.1em; margin-left: 5px;" title="Borrar Producto">🗑️</button>
-                    </td></tr>`;
-            });
-            llenarSelectoresInventario();
-        }
-
-        function llenarSelectoresInventario() {
-            const selVR = document.getElementById('ingreso-select-prod');
-            if(selVR) {
-                selVR.innerHTML = '<option value="" disabled selected>Selecciona producto para vender...</option>';
-                inventarioGlobal.sort((a,b)=>a.nombre.localeCompare(b.nombre)).forEach(p => {
-                    let stock = parseInt(p.stock) || 0;
-                    if(stock > 0) selVR.innerHTML += `<option value="${p.id}">${p.nombre} ($${p.precio}) - Disp: ${stock}</option>`;
-                });
-            }
-        }
-
-        window.agregarGasto = async function() {
-            const titulo = document.getElementById('gasto-titulo').value.trim();
-            const desc = document.getElementById('gasto-desc').value.trim();
-            const importe = document.getElementById('gasto-importe').value;
-            if(!titulo || !importe) { alert("Completa Título e Importe."); return; }
-            try {
-                await addDoc(collection(db, "gastos"), { titulo: titulo, descripcion: desc, importe: parseFloat(importe), fechaRegistro: serverTimestamp() });
-                document.getElementById('gasto-titulo').value = ''; document.getElementById('gasto-desc').value = ''; document.getElementById('gasto-importe').value = '';
-            } catch (error) { alert("Error al registrar."); }
-        }
-        window.eliminarGasto = async function(id) { if(confirm("¿Eliminar este gasto?")) await deleteDoc(doc(db, "gastos", id)); }
-        
-        function renderizarGastos() {
-            const tbody = document.getElementById('tabla-gastos');
-            if(!tbody) return;
-            tbody.innerHTML = '';
-            if(gastosGlobal.length === 0) { tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: #9ca3af; padding: 15px;">No hay gastos</td></tr>'; return; }
-            gastosGlobal.sort((a, b) => (b.fechaRegistro?.seconds || 0) - (a.fechaRegistro?.seconds || 0)).forEach(gasto => {
-                let descHtml = gasto.descripcion ? `<br><small class="text-neutral-sub" style="font-size:0.85em;">${gasto.descripcion}</small>` : '';
-                tbody.innerHTML += `<tr><td><strong class="text-neutral-main">${gasto.titulo}</strong>${descHtml}</td>
-                    <td style="text-align: right; font-weight: bold;" class="text-neutral-bold">$${gasto.importe}</td>
-                    <td style="text-align: center;"><button onclick="window.eliminarGasto('${gasto.id}')" style="background:none;border:none;cursor:pointer;font-size:1.1em;">🗑️</button></td></tr>`;
-            });
-        }
-
-        window.venderProductoMostrador = async function() {
-            const prodId = document.getElementById('ingreso-select-prod').value;
-            const efe = parseFloat(document.getElementById('ingreso-efectivo-prod').value) || 0;
-            const trans = parseFloat(document.getElementById('ingreso-transferencia-prod').value) || 0;
-            
-            if(!prodId) { alert("Selecciona un producto."); return; }
-            const prod = inventarioGlobal.find(p => p.id === prodId);
-            if(!prod) return;
-
-            let stockActual = parseInt(prod.stock) || 0;
-            if(stockActual <= 0) { alert("No hay stock suficiente."); return; }
-            if(efe === 0 && trans === 0) { alert("Ingresa el monto cobrado."); return; }
-
-            try {
-                await addDoc(collection(db, "ingresos"), { 
-                    titulo: `Venta: ${prod.nombre}`, efectivo: efe, transferencia: trans, fechaRegistro: serverTimestamp() 
-                });
-                await updateDoc(doc(db, "inventario", prodId), { stock: stockActual - 1 });
-                document.getElementById('ingreso-efectivo-prod').value = ''; document.getElementById('ingreso-transferencia-prod').value = '';
-                alert("Venta registrada y stock descontado.");
-            } catch(e) { alert("Error en la venta."); }
-        }
-
-        window.agregarIngresoLibre = async function() {
-            const titulo = document.getElementById('ingreso-titulo').value.trim();
-            const efe = parseFloat(document.getElementById('ingreso-efectivo').value) || 0;
-            const trans = parseFloat(document.getElementById('ingreso-transferencia').value) || 0;
-            if(!titulo || (efe === 0 && trans === 0)) { alert("Completa el detalle y al menos un monto."); return; }
-            try {
-                await addDoc(collection(db, "ingresos"), { titulo: titulo, efectivo: efe, transferencia: trans, fechaRegistro: serverTimestamp() });
-                document.getElementById('ingreso-titulo').value = ''; document.getElementById('ingreso-efectivo').value = ''; document.getElementById('ingreso-transferencia').value = '';
-            } catch (error) { alert("Error al registrar."); }
-        }
-        window.eliminarIngreso = async function(id) { if(confirm("¿Borrar este ingreso manual?")) await deleteDoc(doc(db, "ingresos", id)); }
-        
-        function renderizarIngresos() {
-            const tbody = document.getElementById('tabla-ingresos');
-            if(!tbody) return;
-            tbody.innerHTML = '';
-
-            let listaCombinada = [];
-            reservasGlobales.forEach(res => {
-                let efe = parseFloat(res.pagoEfectivo) || 0;
-                let trans = parseFloat(res.pagoTransferencia) || 0;
-                if(efe > 0 || trans > 0) {
-                    let tipoE = res.tipoEvento && res.tipoEvento !== 'Normal' ? ` [${res.tipoEvento}]` : '';
-                    listaCombinada.push({
-                        id: res.id, tipo: 'reserva', titulo: `Turno ${res.modalidad}: ${res.jugador}${tipoE} (${res.fecha})`,
-                        efectivo: efe, transferencia: trans, fechaObj: getDateFromFirebase(res.fechaRegistro).getTime()
-                    });
-                }
-            });
-            ingresosGlobal.forEach(ing => {
-                listaCombinada.push({
-                    id: ing.id, tipo: 'manual', titulo: ing.titulo,
-                    efectivo: parseFloat(ing.efectivo) || 0, transferencia: parseFloat(ing.transferencia) || 0,
-                    fechaObj: getDateFromFirebase(ing.fechaRegistro).getTime()
-                });
-            });
-
-            if(listaCombinada.length === 0) { tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #9ca3af; padding: 15px;">No hay ingresos registrados</td></tr>'; return; }
-
-            listaCombinada.sort((a, b) => b.fechaObj - a.fechaObj);
-
-            listaCombinada.forEach(item => {
-                let btnHtml = item.tipo === 'manual' 
-                    ? `<button onclick="window.eliminarIngreso('${item.id}')" style="background:none;border:none;cursor:pointer;font-size:1.1em;" title="Borrar">🗑️</button>`
-                    : `<span style="color:#9ca3af; font-size:0.8em; border: 1px solid #44505d; padding: 2px 5px; border-radius: 4px;">Turno</span>`;
-                
-                tbody.innerHTML += `<tr><td><strong class="text-neutral-main">${item.titulo}</strong></td>
-                    <td style="text-align: right;" class="text-neutral-bold">$${item.efectivo}</td>
-                    <td style="text-align: right;" class="text-neutral-sub">$${item.transferencia}</td>
-                    <td style="text-align: center;">${btnHtml}</td></tr>`;
-            });
-        }
-
-        function renderizarHistorial() {
-            const tbody = document.getElementById('tabla-historial');
-            if(!tbody) return;
-            tbody.innerHTML = '';
-            
-            let historial = [];
-
-            gastosGlobal.forEach(g => {
-                let fr = getDateFromFirebase(g.fechaRegistro);
-                historial.push({
-                    fechaObj: fr,
-                    fechaStr: `${fr.getDate().toString().padStart(2,'0')}/${(fr.getMonth()+1).toString().padStart(2,'0')} ${fr.getHours().toString().padStart(2,'0')}:${fr.getMinutes().toString().padStart(2,'0')}`,
-                    detalle: g.titulo,
-                    monto: parseFloat(g.importe) || 0,
-                    tipo: 'gasto'
-                });
-            });
-
-            ingresosGlobal.forEach(i => {
-                let fr = getDateFromFirebase(i.fechaRegistro);
-                let tot = (parseFloat(i.efectivo) || 0) + (parseFloat(i.transferencia) || 0);
-                historial.push({
-                    fechaObj: fr,
-                    fechaStr: `${fr.getDate().toString().padStart(2,'0')}/${(fr.getMonth()+1).toString().padStart(2,'0')} ${fr.getHours().toString().padStart(2,'0')}:${fr.getMinutes().toString().padStart(2,'0')}`,
-                    detalle: i.titulo,
-                    monto: tot,
-                    tipo: 'ingreso'
-                });
-            });
-
-            reservasGlobales.forEach(r => {
-                let tot = (parseFloat(r.pagoEfectivo) || 0) + (parseFloat(r.pagoTransferencia) || 0);
-                if(tot > 0) {
-                    let fr = getDateFromFirebase(r.fechaRegistro); 
-                    let tipoE = r.tipoEvento && r.tipoEvento !== 'Normal' ? ` [${r.tipoEvento}]` : '';
-                    historial.push({
-                        fechaObj: fr,
-                        fechaStr: `${fr.getDate().toString().padStart(2,'0')}/${(fr.getMonth()+1).toString().padStart(2,'0')}`, 
-                        detalle: `Turno: ${r.jugador}${tipoE} (${r.fecha})`,
-                        monto: tot,
-                        tipo: 'ingreso'
-                    });
-                }
-            });
-
-            if(historial.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="3" style="text-align: center; color: #9ca3af; padding: 15px;">No hay transacciones aún</td></tr>';
-                return;
-            }
-
-            historial.sort((a,b) => b.fechaObj.getTime() - a.fechaObj.getTime());
-
-            historial.forEach(item => {
-                let colorMonto = item.tipo === 'ingreso' ? '#10b981' : '#ef4444';
-                let signo = item.tipo === 'ingreso' ? '+' : '-';
-                tbody.innerHTML += `
-                    <tr>
-                        <td style="color: #9ca3af; font-size: 0.85em;">${item.fechaStr}</td>
-                        <td class="text-neutral-main">${item.detalle}</td>
-                        <td style="text-align: right; color: ${colorMonto}; font-weight: bold;">${signo} $${item.monto}</td>
-                    </tr>
-                `;
-            });
-        }
-
-        window.generarBalance = async function() {
-            const titulo = document.getElementById('balance-titulo').value.trim();
-            const periodoDias = document.getElementById('balance-periodo').value;
-            if(!titulo || !periodoDias) { alert("Completa Nombre del Balance y Período."); return; }
-
-            let fechaLimite = new Date();
-            if (periodoDias !== "todo") {
-                fechaLimite.setDate(fechaLimite.getDate() - parseInt(periodoDias));
-            } else { fechaLimite = new Date(2000, 0, 1); }
-
-            let totalIngresos = 0; let totalGastos = 0;
-
-            reservasGlobales.forEach(res => {
-                let fr = getDateFromFirebase(res.fechaRegistro);
-                if(fr >= fechaLimite) totalIngresos += (parseFloat(res.pagoEfectivo) || 0) + (parseFloat(res.pagoTransferencia) || 0);
-            });
-            ingresosGlobal.forEach(ing => {
-                let fr = getDateFromFirebase(ing.fechaRegistro);
-                if(fr >= fechaLimite) totalIngresos += (parseFloat(ing.efectivo) || 0) + (parseFloat(ing.transferencia) || 0);
-            });
-            gastosGlobal.forEach(gasto => {
-                let fr = getDateFromFirebase(gasto.fechaRegistro);
-                if(fr >= fechaLimite) totalGastos += parseFloat(gasto.importe) || 0;
-            });
-
-            let gananciaNeta = totalIngresos - totalGastos;
-            
-            let textoPeriodo = "";
-            if (periodoDias === "todo") {
-                textoPeriodo = "Historial Completo";
-            } else if (periodoDias === "1") {
-                textoPeriodo = "Últimas 24hs";
-            } else {
-                textoPeriodo = `Últimos ${periodoDias} días`;
-            }
-
-            try {
-                await addDoc(collection(db, "balances"), {
-                    titulo: titulo, periodoTexto: textoPeriodo, ingresos: totalIngresos, gastos: totalGastos,
-                    ganancia: gananciaNeta, fechaCreacion: serverTimestamp()
-                });
-                document.getElementById('balance-titulo').value = ''; document.getElementById('balance-periodo').value = '';
-            } catch (e) { alert("Error al guardar el balance."); }
-        }
-
-        window.eliminarBalance = async function(id) { if(confirm("¿Borrar este balance?")) await deleteDoc(doc(db, "balances", id)); }
-
-        function renderizarBalances() {
-            const tbody = document.getElementById('tabla-balances');
-            if(!tbody) return;
-            tbody.innerHTML = '';
-            if(balancesGlobal.length === 0) { tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #9ca3af; padding: 15px;">No hay balances</td></tr>'; return; }
-
-            balancesGlobal.sort((a,b) => (b.fechaCreacion?.seconds || 0) - (a.fechaCreacion?.seconds || 0)).forEach(bal => {
-                tbody.innerHTML += `
-                    <tr>
-                        <td><strong class="text-neutral-main">${bal.titulo}</strong><br><small class="text-neutral-sub">(${bal.periodoTexto})</small></td>
-                        <td style="text-align: right;" class="text-neutral-sub">$${bal.ingresos}</td>
-                        <td style="text-align: right;" class="text-neutral-sub">$${bal.gastos}</td>
-                        <td style="text-align: right; font-weight: bold;" class="text-neutral-main">$${bal.ganancia}</td>
-                        <td style="text-align: center;"><button onclick="window.eliminarBalance('${bal.id}')" style="background:none;border:none;cursor:pointer;font-size:1.1em;">🗑️</button></td>
-                    </tr>
-                `;
-            });
-        }
-
-        window.abrirModalMetricas = function() { calcularMetricas(); document.getElementById('modal-metricas').style.display = 'flex'; }
-        window.cerrarModalMetricas = function() { document.getElementById('modal-metricas').style.display = 'none'; }
-        function calcularMetricas() {
-            const m = {}; const n = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-            reservasGlobales.forEach(r => {
-                if(!r.fecha) return; let p = r.fecha.split('-'); let txt = `${n[parseInt(p[1])-1]} ${p[0]}`;
-                if(!m[txt]) m[txt] = { t: 0 }; m[txt].t++;
-            });
-            let html = ""; let k = Object.keys(m);
-            if(k.length===0){ document.getElementById('contenido-metricas').innerHTML = "<p style='color:#9ca3af; text-align:center;'>Aún no hay partidos.</p>"; return; }
-            k.sort().reverse().forEach(mes => {
-                html += `<div style="background:#242c36; padding:15px; border-radius:8px; margin-bottom:15px; border: 1px solid #2c3540;">
-                            <h4 style="margin:0 0 10px 0; color:#3b82f6; border-bottom:1px solid #44505d; padding-bottom:8px;">📅 ${mes}</h4>
-                            <div style="text-align: center; background: #171d24; padding: 10px; border-radius: 6px;">
-                                <div style="font-size: 1.8em; font-weight: bold; color: #10b981;">${m[mes].t}</div>
-                                <div style="font-size: 0.9em; color: #9ca3af;">Eventos Totales</div>
-                            </div></div>`;
-            });
-            document.getElementById('contenido-metricas').innerHTML = html;
-        }
-
-        window.hacerTurnoFijo = async function() {
-            if(!reservaSeleccionadaId) return;
-            const resO = reservasGlobales.find(r => r.id === reservaSeleccionadaId); if(!resO) return;
-            if (resO.esFijo) { alert("Este partido ya pertenece a un turno fijo."); return; }
-            if (!confirm("¿Convertir en TURNO FIJO?\n\nEl sistema reservará automáticamente esta misma cancha y horario para las próximas 52 semanas.")) return;
-
-            try {
-                let idG = "FIJO-" + Date.now();
-                await updateDoc(doc(db, "reservas", reservaSeleccionadaId), { esFijo: true, grupoFijoId: idG });
-                
-                let p = []; let fB = new Date(`${resO.fecha}T12:00:00`); 
-                for(let i=1; i<=52; i++) {
-                    let fT = new Date(fB); fT.setDate(fT.getDate() + (i * 7));
-                    let fISO = `${fT.getFullYear()}-${(fT.getMonth()+1).toString().padStart(2,'0')}-${fT.getDate().toString().padStart(2,'0')}`;
-                    p.push(addDoc(collection(db, "reservas"), { 
-                        ...resO, id: undefined, fecha: fISO, fechaRegistro: serverTimestamp(), esFijo: true, grupoFijoId: idG, pagoEfectivo: 0, pagoTransferencia: 0, consumos: []
-                    }));
-                }
-                await Promise.all(p); 
-                alert(`¡Turno Fijo establecido exitosamente!`); 
-                window.cerrarModalAcciones();
-            } catch (e) { alert("Error al establecer fijo."); }
-        }
-
-        window.accionEliminar = async function() { 
-            if(!reservaSeleccionadaId) return;
-            const res = reservasGlobales.find(r => r.id === reservaSeleccionadaId);
-            if(!res) return;
-
-            if (res.esFijo && res.grupoFijoId) {
-                let accion = confirm("Este es un TURNO FIJO.\n\n[ACEPTAR] para eliminar TODO el turno fijo desde esta fecha en adelante.\n[CANCELAR] para eliminar SOLO el partido de esta semana.");
-                if (accion) {
-                    let futuros = reservasGlobales.filter(r => r.grupoFijoId === res.grupoFijoId && r.fecha >= res.fecha);
-                    if (confirm(`Se eliminarán permanentemente ${futuros.length} partidos. ¿Continuar?`)) {
-                        let promesas = futuros.map(f => deleteDoc(doc(db, "reservas", f.id)));
-                        await Promise.all(promesas);
-                        window.cerrarModalAcciones();
-                    }
-                } else {
-                    if (confirm("¿Borrar solo este partido específico?")) {
-                        await deleteDoc(doc(db, "reservas", reservaSeleccionadaId)); 
-                        window.cerrarModalAcciones(); 
-                    }
-                }
-            } else {
-                if(confirm("¿Cancelar este partido/evento?")) { 
-                    await deleteDoc(doc(db, "reservas", reservaSeleccionadaId)); 
-                    window.cerrarModalAcciones(); 
-                }
-            }
-        }
-
-        window.enviarWhatsApp = function() {
-            if(reservaSeleccionadaId) {
-                const r = reservasGlobales.find(x => x.id === reservaSeleccionadaId);
-                if(r && r.telefono) {
-                    let tel = r.telefono.replace(/[^0-9+]/g, ''); let p = r.fecha.split('-');
-                    
-                    let factorPrecio = (r.duracion || duracionGlobal) / duracionGlobal;
-                    let precioAplicado = 0;
-                    if (r.modalidad === 'F7') precioAplicado = parseInt(precioF7) * factorPrecio;
-                    if (r.modalidad === 'F9') precioAplicado = parseInt(precioF9) * factorPrecio;
-                    if (r.modalidad === 'F11') precioAplicado = parseInt(precioF11) * factorPrecio;
-
-                    let txtDur = r.duracion ? ` de ${r.duracion} minutos` : '';
-                    let msj = `Hola ${r.jugador}, confirmamos tu turno${txtDur} en la modalidad ${r.modalidad} el día ${p[2]}/${p[1]} a las ${r.hora}hs. El valor de la cancha es de $${precioAplicado}.`;
-                    window.open(`https://wa.me/${tel}?text=${encodeURIComponent(msj)}`, '_blank');
-                    window.cerrarModalAcciones();
-                }
-            }
-        }
-
-        function renderizarCalendarios() {
-            const cc = document.getElementById('calendario-cliente'); const ct = document.getElementById('calendario-turnero');
-            cc.innerHTML = ''; ct.innerHTML = ''; const dC = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
-            fechasValidas.forEach((fISO, i) => {
-                const f = new Date(fISO.split('-')[0], fISO.split('-')[1] - 1, fISO.split('-')[2]);
-                const cerrado = !diasAbiertosGlobal.includes(f.getDay());
-                const ht = `<div class="dia-item ${fISO === fechaSeleccionada ? 'activo' : ''} ${cerrado ? 'dia-cerrado' : ''}" ${cerrado ? '' : `onclick="window.seleccionarFecha('${fISO}')"`} title="${cerrado ? 'Cerrado' : ''}">
-                                <span class="dia-nombre">${i === 0 ? 'HOY' : dC[f.getDay()]}</span><span class="dia-numero">${f.getDate().toString().padStart(2, '0')}</span>
-                             </div>`;
-                cc.innerHTML += ht; ct.innerHTML += ht;
-            });
-        }
-
-        window.seleccionarFecha = function(fISO) { fechaSeleccionada = fISO; renderizarCalendarios(); renderizarPantallas(); }
-
-        // --- LISTENERS FIREBASE ---
-        onSnapshot(doc(db, "configuracion", "turnero"), (docSnap) => {
-            if (docSnap.exists()) {
-                let d = docSnap.data();
-                primerTurno = d.primerTurno || "18:00"; ultimoTurno = d.ultimoTurno || "23:00"; duracionGlobal = d.duracionTurno || 60;
-                
-                precioF7 = d.precioF7 || "15000"; 
-                precioF9 = d.precioF9 || "20000"; 
-                precioF11 = d.precioF11 || "25000"; 
-                
-                cantF7 = d.canchasF7 !== undefined ? d.canchasF7 : 3; cantF9 = d.canchasF9 !== undefined ? d.canchasF9 : 1; cantF11 = d.canchasF11 !== undefined ? d.canchasF11 : 1;
-                equivF9 = d.equivF9 || 2; equivF11 = d.equivF11 || 3;
-                diasAbiertosGlobal = d.diasAbiertos || [1, 2, 3, 4, 5, 6, 0];
-                
-                document.getElementById('input-primer-turno').value = primerTurno; document.getElementById('input-ultimo-turno').value = ultimoTurno;
-                document.getElementById('input-duracion').value = duracionGlobal;
-                
-                document.getElementById('input-precio-f7').value = precioF7;
-                document.getElementById('input-precio-f9').value = precioF9;
-                document.getElementById('input-precio-f11').value = precioF11;
-                
-                document.getElementById('input-canchas-f7').value = cantF7; document.getElementById('input-canchas-f9').value = cantF9; document.getElementById('input-canchas-f11').value = cantF11;
-                document.getElementById('input-equiv-f9').value = equivF9; document.getElementById('input-equiv-f11').value = equivF11;
-                document.querySelectorAll('.check-dia').forEach(cb => cb.checked = diasAbiertosGlobal.includes(parseInt(cb.value)));
-            }
-            construirColumnas();
-            
-            let fA = new Date(fechaSeleccionada.split('-')[0], fechaSeleccionada.split('-')[1] - 1, fechaSeleccionada.split('-')[2]);
-            if (!diasAbiertosGlobal.includes(fA.getDay())) {
-                let prox = fechasValidas.find(f => diasAbiertosGlobal.includes(new Date(f.split('-')[0], f.split('-')[1]-1, f.split('-')[2]).getDay()));
-                if(prox) fechaSeleccionada = prox;
-            }
-            renderizarCalendarios(); renderizarPantallas(); 
-        });
-
-        onSnapshot(collection(db, "reservas"), (snap) => {
-            reservasGlobales = []; snap.forEach(d => reservasGlobales.push({ id: d.id, ...d.data() }));
-            renderizarPantallas(); 
-            renderizarIngresos();
-            renderizarHistorial();
-            if(reservaSeleccionadaId) renderizarModalTurnoAcciones();
-        });
-
-        // Listeners Finanzas
-        onSnapshot(collection(db, "inventario"), (snapshot) => {
-            inventarioGlobal = []; snapshot.forEach((doc) => inventarioGlobal.push({ id: doc.id, ...doc.data() }));
-            renderizarInventario(); if(reservaSeleccionadaId) renderizarModalTurnoAcciones(); 
-        });
-        onSnapshot(collection(db, "gastos"), (snapshot) => {
-            gastosGlobal = []; snapshot.forEach((doc) => gastosGlobal.push({ id: doc.id, ...doc.data() })); 
-            renderizarGastos(); renderizarHistorial();
-        });
-        onSnapshot(collection(db, "ingresos"), (snapshot) => {
-            ingresosGlobal = []; snapshot.forEach((doc) => ingresosGlobal.push({ id: doc.id, ...doc.data() })); 
-            renderizarIngresos(); renderizarHistorial();
-        });
-        onSnapshot(collection(db, "balances"), (snapshot) => {
-            balancesGlobal = []; snapshot.forEach((doc) => balancesGlobal.push({ id: doc.id, ...doc.data() })); 
-            renderizarBalances(); 
-        });
-
-    </script>
-</body>
-</html>
+  );
+}
+
+// Componente visual para los estados
+function StatusBadge({ status }) {
+  const colors = {
+    'Pendiente': 'bg-yellow-100 text-yellow-800 border-yellow-200',
+    'Ingresó': 'bg-green-100 text-green-800 border-green-200',
+    'Salió': 'bg-gray-100 text-gray-800 border-gray-200'
+  };
+  
+  return (
+    <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${colors[status] || 'bg-gray-100 text-gray-800'}`}>
+      {status || 'Desconocido'}
+    </span>
+  );
+}
